@@ -4,8 +4,24 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/services.dart' show rootBundle;
-import 'dart:html' as html; // web-only download
 import 'dart:async';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'utils/save_certificate.dart' as saver;
+
+// Cross-platform utility functions
+Future<void> openUrl(String url) async {
+  final uri = Uri.parse(url);
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+}
+
+Future<void> saveCertificateToFile(Uint8List pngBytes, String name) async {
+  await saver.saveCertificate(pngBytes, name);
+}
+
+String _sanitize(String s) => s.replaceAll(RegExp(r'[^a-zA-Z0-9._ -]+'), '_');
 
 // Direct navigation to search page
 void navigateToSearchPage(BuildContext context) {
@@ -186,15 +202,10 @@ class DashboardPage extends StatelessWidget {
                   // Hero Section
                   Container(
                     height: 500,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          const Color(0xFF2C3E50),
-                          const Color(0xFF34495E),
-                          const Color(0xFF424242),
-                        ],
+                    decoration: const BoxDecoration(
+                      image: DecorationImage(
+                        image: AssetImage('assets/backgroundlari.jpg'),
+                        fit: BoxFit.cover,
                       ),
                     ),
                     child: Stack(
@@ -204,30 +215,6 @@ class DashboardPage extends StatelessWidget {
                           width: double.infinity,
                           height: double.infinity,
                           color: Colors.white.withOpacity(0.02),
-                        ),
-                        // Placeholder for background image with better styling
-                        Container(
-                          width: double.infinity,
-                          height: double.infinity,
-                          child: Center(
-                            child: Container(
-                              width: 200,
-                              height: 200,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: Colors.white.withOpacity(0.2),
-                                  width: 2,
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.directions_bike,
-                                size: 80,
-                                color: Colors.white70,
-                              ),
-                            ),
-                          ),
                         ),
                         // Overlay with gradient
                         Container(
@@ -358,17 +345,17 @@ class DashboardPage extends StatelessWidget {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  _buildPinkLink('PRICING'),
+                                  _buildPinkLink('PRICING', '/pricing'),
                                   const SizedBox(width: 40),
-                                  _buildPinkLink('FEATURES'),
+                                  _buildPinkLink('FEATURES', '/features'),
                                   const SizedBox(width: 40),
-                                  _buildPinkLink('FAQ'),
+                                  _buildPinkLink('FAQ', '/faq'),
                                 ],
                               ),
                               const SizedBox(height: 35),
                               _buildModernButton('Request Quote', () {
                                 final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
-                                html.window.open(whatsappUrl, '_blank');
+                                openUrl(whatsappUrl);
                               }),
                             ],
                           ),
@@ -394,14 +381,7 @@ class DashboardPage extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 50),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            _buildSportCard('Running', Icons.directions_run, const Color(0xFF3498DB)),
-                            _buildSportCard('Cycling', Icons.directions_bike, const Color(0xFFE74C3C)),
-                            _buildSportCard('Triathlon', Icons.pool, const Color(0xFF2ECC71)),
-                          ],
-                        ),
+                        _buildSportCardsSharedHover(),
                         const SizedBox(height: 50),
                         _buildModernButton('Get Started Today', () {
                           Navigator.pushNamed(context, '/pricing');
@@ -489,7 +469,7 @@ class DashboardPage extends StatelessWidget {
                 GestureDetector(
                   onTap: () {
                     final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
-                    html.window.open(whatsappUrl, '_blank');
+                    openUrl(whatsappUrl);
                   },
                   child: const Text(
                     'Request Quote (via Whatsapp)',
@@ -534,9 +514,13 @@ class DashboardPage extends StatelessWidget {
     );
   }
 
-  Widget _buildPinkLink(String text) {
-    return GestureDetector(
-      onTap: () {},
+  Widget _buildPinkLink(String text, String route) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: Builder(builder: (context) => GestureDetector(
+        onTap: () {
+          Navigator.pushNamed(context, route);
+        },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
@@ -557,11 +541,14 @@ class DashboardPage extends StatelessWidget {
           ),
         ),
       ),
+      )),
     );
   }
 
   Widget _buildModernButton(String text, VoidCallback onPressed) {
-    return Container(
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: Container(
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFFE91E63), Color(0xFFC2185B)],
@@ -594,6 +581,7 @@ class DashboardPage extends StatelessWidget {
             fontWeight: FontWeight.w700,
             color: Colors.white,
             letterSpacing: 1,
+          ),
           ),
         ),
       ),
@@ -633,64 +621,215 @@ class DashboardPage extends StatelessWidget {
     );
   }
 
-  Widget _buildSportCard(String title, IconData icon, Color accentColor) {
-    return Container(
-      width: 220,
-      height: 180,
+  Widget _buildSportCard(String title, String imagePath, Color accentColor, String description) {
+    return StatefulBuilder(builder: (context, setState) {
+      bool showInfo = false;
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => setState(() => showInfo = !showInfo),
+        child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            transform: Matrix4.identity()
+              ..scale(showInfo ? 1.03 : 1.0),
+            width: 250,
+            height: 220,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+                  color: showInfo 
+                    ? accentColor.withOpacity(0.4)
+                    : Colors.black.withOpacity(0.1),
+                  blurRadius: showInfo ? 28 : 20,
+                  offset: Offset(0, showInfo ? 16 : 10),
+                  spreadRadius: showInfo ? 1 : 0,
+                ),
+                if (showInfo)
+                  BoxShadow(
+                    color: accentColor.withOpacity(0.2),
+                    blurRadius: 15,
+                    offset: const Offset(0, 5),
+                    spreadRadius: 1,
           ),
         ],
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            width: 80,
-            height: 80,
+                // Image section - full width and height
+                Expanded(
+                  flex: 3,
+                  child: Container(
+                    width: double.infinity,
             decoration: BoxDecoration(
-              color: accentColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(40),
-              border: Border.all(
-                color: accentColor.withOpacity(0.3),
-                width: 2,
-              ),
-            ),
-            child: Icon(
-              icon,
-              size: 40,
-              color: accentColor,
-            ),
-          ),
-          const SizedBox(height: 20),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(20),
+                        topRight: Radius.circular(20),
+                      ),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(20),
+                        topRight: Radius.circular(20),
+                      ),
+                      child: Stack(
+                        children: [
+                          // Image
+                          Positioned.fill(
+                            child: Image.asset(
+                              imagePath,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          // Tap catcher over the whole image area
+                          Positioned.fill(
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () => setState(() => showInfo = !showInfo),
+                                splashColor: Colors.white24,
+                                highlightColor: Colors.white10,
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(20),
+                                  topRight: Radius.circular(20),
+                                ),
+                              ),
+                            ),
+                          ),
+                          // Border highlight on hover
+                          if (showInfo)
+                            Positioned.fill(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: accentColor.withOpacity(0.8), width: 3),
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(20),
+                                    topRight: Radius.circular(20),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          // Description overlay with fade + slide (bottom band)
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            child: IgnorePointer(
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 250),
+                                transitionBuilder: (child, animation) {
+                                  final fade = CurvedAnimation(parent: animation, curve: Curves.easeInOut);
+                                  final slide = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero)
+                                      .animate(fade);
+                                  return FadeTransition(
+                                    opacity: fade,
+                                    child: SlideTransition(position: slide, child: child),
+                                  );
+                                },
+                                child: showInfo
+                                    ? Container(
+                                        key: const ValueKey('overlay')
+                                        ,height: 96,
+                                        decoration: const BoxDecoration(
+                                          borderRadius: BorderRadius.only(
+                                            topLeft: Radius.circular(20),
+                                            topRight: Radius.circular(20),
+                                          ),
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topCenter,
+                                            end: Alignment.bottomCenter,
+                                            colors: [
+                                              Color(0x00000000),
+                                              Color(0xEE000000),
+                                            ],
+                                          ),
+                                        ),
+                                        padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+                                        alignment: Alignment.bottomLeft,
+                                        child: Text(
+                                          description,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 14,
+                                            height: 1.25,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                          maxLines: 3,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      )
+                                    : const SizedBox.shrink(key: ValueKey('hidden')),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // Text section
+                Expanded(
+                  flex: 2,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
           Text(
             title,
             style: TextStyle(
-              fontSize: 20,
+                            fontSize: 18,
               fontWeight: FontWeight.w700,
               color: accentColor,
               letterSpacing: 0.5,
             ),
           ),
-          const SizedBox(height: 8),
+                        const SizedBox(height: 4),
           Text(
             'Professional Timing',
             style: TextStyle(
-              fontSize: 14,
+                            fontSize: 12,
               color: Colors.grey[600],
               fontWeight: FontWeight.w500,
             ),
           ),
         ],
-      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      );
+    });
+  }
+
+  // Shared hover row so only the hovered card zooms, others dim slightly
+  Widget _buildSportCardsSharedHover() {
+    return StatefulBuilder(
+      builder: (context, setState) {
+        int? hoveredIndex;
+
+        Widget buildItem(int index, String title, String image, Color accent, String desc) {
+          return _buildSportCard(title, image, accent, desc);
+        }
+
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            buildItem(0, 'Running', 'assets/lari.jpg', const Color(0xFF3498DB),
+                'Running events demand speed, stamina, and precise split timing for every athlete.'),
+            buildItem(1, 'Cycling', 'assets/sepeda.jpg', const Color(0xFFE74C3C),
+                'Cycling races require accurate checkpoints, drafting awareness, and secure lap tracking.'),
+            buildItem(2, 'Triathlon', 'assets/triathlon.jpg', const Color(0xFF2ECC71),
+                'Triathlon combines swim, bike, and run with flawless transitions and end-to-end timing.'),
+          ],
+        );
+      },
     );
   }
+
 }
 
 class PricingPage extends StatelessWidget {
@@ -965,7 +1104,7 @@ class PricingPage extends StatelessWidget {
                               const SizedBox(height: 30),
                               _buildModernButton('Request Custom Quote', () {
                                 final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
-                                html.window.open(whatsappUrl, '_blank');
+                                openUrl(whatsappUrl);
                               }),
                             ],
                           ),
@@ -1053,7 +1192,7 @@ class PricingPage extends StatelessWidget {
                 GestureDetector(
                   onTap: () {
                     final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
-                    html.window.open(whatsappUrl, '_blank');
+                    openUrl(whatsappUrl);
                   },
                   child: const Text(
                     'Request Quote (via Whatsapp)',
@@ -1220,7 +1359,7 @@ class PricingPage extends StatelessWidget {
                   width: double.infinity,
                   child: _buildModernButton('Request Quote', () {
                     final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
-                    html.window.open(whatsappUrl, '_blank');
+                    openUrl(whatsappUrl);
                   }),
                 ),
               ],
@@ -1485,7 +1624,7 @@ class FeaturesPage extends StatelessWidget {
                           () {
                             // Open WhatsApp with pre-filled message
                             final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
-                            html.window.open(whatsappUrl, '_blank');
+                            openUrl(whatsappUrl);
                           },
                         ),
                       ],
@@ -1571,7 +1710,7 @@ class FeaturesPage extends StatelessWidget {
                 GestureDetector(
                   onTap: () {
                     final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
-                    html.window.open(whatsappUrl, '_blank');
+                    openUrl(whatsappUrl);
                   },
                   child: const Text(
                     'Request Quote (via Whatsapp)',
@@ -1891,7 +2030,7 @@ class ContactPage extends StatelessWidget {
                           onTap: () {
                             // Open email client
                             final emailUrl = 'mailto:runmlgrun@gmail.com';
-                            html.window.open(emailUrl, '_blank');
+                            openUrl(emailUrl);
                           },
                           child: const Text(
                             'Email: runmlgrun@gmail.com',
@@ -1941,7 +2080,7 @@ class ContactPage extends StatelessWidget {
                       'Request Quote',
                       () {
                         final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
-                        html.window.open(whatsappUrl, '_blank');
+                        openUrl(whatsappUrl);
                       },
                     ),
                   ],
@@ -2025,7 +2164,7 @@ class ContactPage extends StatelessWidget {
                 GestureDetector(
                   onTap: () {
                     final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
-                    html.window.open(whatsappUrl, '_blank');
+                    openUrl(whatsappUrl);
                   },
                   child: const Text(
                     'Request Quote (via Whatsapp)',
@@ -2310,7 +2449,7 @@ class FAQPage extends StatelessWidget {
                       'Request Quote',
                       () {
                         final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
-                        html.window.open(whatsappUrl, '_blank');
+                        openUrl(whatsappUrl);
                       },
                     ),
                     const SizedBox(height: 20),
@@ -2404,7 +2543,7 @@ class FAQPage extends StatelessWidget {
                 GestureDetector(
                   onTap: () {
                     final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
-                    html.window.open(whatsappUrl, '_blank');
+                    openUrl(whatsappUrl);
                   },
                   child: const Text(
                     'Request Quote (via Whatsapp)',
@@ -3064,7 +3203,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                 GestureDetector(
                   onTap: () {
                     final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
-                    html.window.open(whatsappUrl, '_blank');
+                    openUrl(whatsappUrl);
                   },
                   child: const Text(
                     'Request Quote (via Whatsapp)',
@@ -3512,16 +3651,23 @@ class RaceResultsPage extends StatelessWidget {
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  // Hero Section
+                  // Hero Section with background image
                   Container(
                     height: 300,
+                    decoration: const BoxDecoration(
+                      image: DecorationImage(
+                        image: AssetImage('assets/tiga.jpg'),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    child: Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
                         colors: [
-                          const Color(0xFF2C3E50),
-                          const Color(0xFF34495E),
+                            Colors.black.withOpacity(0.35),
+                            Colors.black.withOpacity(0.55),
                         ],
                       ),
                     ),
@@ -3540,6 +3686,7 @@ class RaceResultsPage extends StatelessWidget {
                               color: Colors.black54,
                             ),
                           ],
+                          ),
                         ),
                       ),
                     ),
@@ -3715,7 +3862,7 @@ class RaceResultsPage extends StatelessWidget {
                 GestureDetector(
                   onTap: () {
                     final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
-                    html.window.open(whatsappUrl, '_blank');
+                    openUrl(whatsappUrl);
                   },
                   child: const Text(
                     'Request Quote (via Whatsapp)',
@@ -3732,6 +3879,124 @@ class RaceResultsPage extends StatelessWidget {
                 const SizedBox(width: 20),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Common footer used across pages
+  Widget _buildFooter(BuildContext context) {
+    const String reportUrl = 'https://reportingwidget.google.com/u/0/widget/35?cid=https://sites.google.com/view/lariterus-timing-system&hl='; // [Google report widget]
+    return Container(
+      height: 60,
+      color: const Color(0xFF424242),
+      child: Row(
+        children: [
+          const SizedBox(width: 20),
+          // Make the info icon clickable -> open report widget
+          MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: () => openUrl(reportUrl),
+              child: const Icon(Icons.info_outline, color: Colors.white, size: 20),
+            ),
+          ),
+          const SizedBox(width: 10),
+          // Navigation quick links
+          Row(
+            children: [
+              GestureDetector(
+                onTap: () {
+                  Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+                },
+                child: const Text('Home', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5)),
+              ),
+              const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+              GestureDetector(
+                onTap: () => Navigator.pushNamed(context, '/pricing'),
+                child: const Text('Pricing', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5)),
+              ),
+              const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+              GestureDetector(
+                onTap: () => Navigator.pushNamed(context, '/features'),
+                child: const Text('Features', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5)),
+              ),
+              const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+              GestureDetector(
+                onTap: () => Navigator.pushNamed(context, '/terms'),
+                child: const Text('T&C', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5)),
+              ),
+              const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+              GestureDetector(
+                onTap: () => Navigator.pushNamed(context, '/contact'),
+                child: const Text('Contact', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5)),
+              ),
+              const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+              GestureDetector(
+                onTap: () => Navigator.pushNamed(context, '/faq'),
+                child: const Text('FAQ', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5)),
+              ),
+            ],
+          ),
+          const Spacer(),
+          // Right info: updated | Google Workspace | Report
+          Row(
+            children: [
+              const Text('Page updated Jul 28, 2025', style: TextStyle(color: Colors.white, fontSize: 13)),
+              const Text('  |  ', style: TextStyle(color: Colors.white70)),
+              GestureDetector(
+                onTap: () => openUrl('https://workspace.google.com/'),
+                child: const Text('Google Workspace', style: TextStyle(color: Colors.white, fontSize: 13, decoration: TextDecoration.underline)),
+              ),
+              const SizedBox(width: 14),
+              Container(
+                height: 28,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: Colors.white24, width: 1),
+                ),
+                child: Row(
+                  children: [
+                    const SizedBox(width: 8),
+                    const Text('Report: ', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                    const SizedBox(width: 6),
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: () => openUrl(reportUrl),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text('Entire site', style: TextStyle(color: Colors.white, fontSize: 12)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: () => openUrl(reportUrl),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text('Current page', style: TextStyle(color: Colors.white, fontSize: 12)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 20),
+            ],
           ),
         ],
       ),
@@ -4558,7 +4823,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
                 GestureDetector(
                   onTap: () {
                     final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
-                    html.window.open(whatsappUrl, '_blank');
+                    openUrl(whatsappUrl);
                   },
                   child: const Text(
                     'Request Quote (via Whatsapp)',
@@ -4701,12 +4966,18 @@ class ResultsDataSource extends DataTableSource {
             width: 100,
             child: r.finished
                 ? TextButton.icon(
-                    onPressed: () => CertificateService.downloadCertificate(
+                    onPressed: () async {
+                      try {
+                        await CertificateService.downloadCertificate(
                       name: r.name,
                       timeText: r.timeDisplay.isEmpty
                           ? '—'
                           : r.timeDisplay, // show time if available
-                    ),
+                        );
+                      } catch (e) {
+                        print('Error downloading certificate: $e');
+                      }
+                    },
                     icon: const Icon(Icons.download),
                     label: const Text('Download'),
                   )
@@ -4781,13 +5052,8 @@ class CertificateService {
     final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
     final pngBytes = byteData!.buffer.asUint8List();
 
-    // 6) Trigger browser download
-    final blob = html.Blob([pngBytes], 'image/png');
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    final a = html.AnchorElement(href: url)
-      ..download = _sanitize('$name-certificate.png')
-      ..click();
-    html.Url.revokeObjectUrl(url);
+    // 6) Trigger download
+    await saveCertificateToFile(pngBytes, name);
   }
 
   static String _sanitize(String s) => s.replaceAll(RegExp(r'[^a-zA-Z0-9._ -]+'), '_');
@@ -5202,7 +5468,7 @@ class TermsPage extends StatelessWidget {
                 GestureDetector(
                   onTap: () {
                     final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
-                    html.window.open(whatsappUrl, '_blank');
+                    openUrl(whatsappUrl);
                   },
                   child: const Text(
                     'Request Quote (via Whatsapp)',
