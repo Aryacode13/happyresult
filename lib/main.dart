@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/services.dart' show rootBundle;
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'utils/save_certificate.dart' as saver;
@@ -54,7 +55,7 @@ class RaceTimingApp extends StatelessWidget {
         useMaterial3: true,
         textTheme: GoogleFonts.lexendTextTheme(),
       ),
-      home: const DashboardPage(),
+      home: const SplashScreen(),
       routes: {
         '/results': (context) => const RaceResultsPage(),
         '/search': (context) => const SearchResultsPage(),
@@ -65,6 +66,131 @@ class RaceTimingApp extends StatelessWidget {
         '/terms': (context) => const TermsPage(),
         '/event-detail': (context) => const EventDetailPage(),
       },
+    );
+  }
+}
+
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen>
+    with TickerProviderStateMixin {
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // Fade animation controller
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeIn,
+    ));
+
+    // Start animation
+    _fadeController.forward();
+
+    // Navigate to main page after 3 seconds
+    Timer(const Duration(seconds: 3), () {
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const DashboardPage()),
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    super.dispose();
+  }
+
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF2C3E50),
+              Color(0xFF34495E),
+              Color(0xFFE91E63),
+            ],
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Splash GIF animation
+              Container(
+                width: 200,
+                height: 200,
+                child: Image.asset(
+                  'assets/splash.gif',
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(height: 40),
+              
+              // App title with fade animation
+              FadeTransition(
+                opacity: _fadeAnimation,
+                child: Column(
+                  children: [
+                    const Text(
+                      'Race Timing Solution',
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Professional Race Management',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.white70,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+                    
+                    // Loading indicator
+                    Container(
+                      width: 40,
+                      height: 40,
+                      child: const CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        strokeWidth: 3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -3658,6 +3784,7 @@ class RaceResultsPage extends StatelessWidget {
                       image: DecorationImage(
                         image: AssetImage('assets/tiga.jpg'),
                         fit: BoxFit.cover,
+                        alignment: Alignment.topCenter,
                       ),
                     ),
                     child: Container(
