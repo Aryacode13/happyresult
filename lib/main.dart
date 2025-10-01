@@ -24,9 +24,101 @@ Future<void> saveCertificateToFile(Uint8List pngBytes, String name) async {
 
 String _sanitize(String s) => s.replaceAll(RegExp(r'[^a-zA-Z0-9._ -]+'), '_');
 
+// Responsive breakpoints
+class ResponsiveBreakpoints {
+  static const double mobile = 768;
+  static const double tablet = 1024;
+  static const double desktop = 1200;
+}
+
+// Responsive helper functions
+bool isMobile(BuildContext context) => MediaQuery.of(context).size.width < ResponsiveBreakpoints.mobile;
+bool isTablet(BuildContext context) => MediaQuery.of(context).size.width >= ResponsiveBreakpoints.mobile && MediaQuery.of(context).size.width < ResponsiveBreakpoints.tablet;
+bool isDesktop(BuildContext context) => MediaQuery.of(context).size.width >= ResponsiveBreakpoints.desktop;
+
+// Get responsive values
+double getResponsiveValue(BuildContext context, {required double mobile, required double tablet, required double desktop}) {
+  if (isMobile(context)) return mobile;
+  if (isTablet(context)) return tablet;
+  return desktop;
+}
+
 // Direct navigation to search page
 void navigateToSearchPage(BuildContext context) {
   Navigator.pushNamed(context, '/search');
+}
+
+// Mobile menu (hamburger) helpers
+void _showMobileMenu(BuildContext context) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.white,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    ),
+    builder: (ctx) {
+      Widget buildItem(String label, VoidCallback onTap, {IconData icon = Icons.chevron_right}) {
+        return ListTile(
+          leading: Icon(icon, color: const Color(0xFFE91E63)),
+          title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+          trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+          onTap: () {
+            Navigator.of(ctx).pop();
+            onTap();
+          },
+        );
+      }
+
+      return SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 42,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.black12,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 8),
+            buildItem('Home', () {
+              Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+            }, icon: Icons.home_outlined),
+            buildItem('Race Results', () {
+              Navigator.pushNamed(context, '/results');
+            }, icon: Icons.emoji_events_outlined),
+            buildItem('Pricing', () {
+              Navigator.pushNamed(context, '/pricing');
+            }, icon: Icons.attach_money_outlined),
+            buildItem('Features', () {
+              Navigator.pushNamed(context, '/features');
+            }, icon: Icons.star_border),
+            buildItem('Contact', () {
+              Navigator.pushNamed(context, '/contact');
+            }, icon: Icons.mail_outline),
+            buildItem('FAQ', () {
+              Navigator.pushNamed(context, '/faq');
+            }, icon: Icons.help_outline),
+            const SizedBox(height: 6),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+Widget _buildMobileMenuButton(BuildContext context) {
+  return Row(
+    children: [
+      IconButton(
+        icon: const Icon(Icons.menu, color: Colors.white),
+        onPressed: () => _showMobileMenu(context),
+        tooltip: 'Menu',
+      ),
+    ],
+  );
 }
 
 const String kStartTimeStr = '2025-08-10 06:54:55';
@@ -155,7 +247,7 @@ class _SplashScreenState extends State<SplashScreen>
                 opacity: _fadeAnimation,
                 child: Column(
                   children: [
-                    const Text(
+                    Text(
                       'Race Timing Solution',
                       style: TextStyle(
                         fontSize: 32,
@@ -165,12 +257,12 @@ class _SplashScreenState extends State<SplashScreen>
                       ),
                     ),
                     const SizedBox(height: 10),
-                    const Text(
+                    Text(
                       'Professional Race Management',
                       style: TextStyle(
                         fontSize: 16,
                         color: Colors.white70,
-                        letterSpacing: 1,
+                        letterSpacing: 0.4,
                       ),
                     ),
                     const SizedBox(height: 30),
@@ -285,38 +377,58 @@ class DashboardPage extends StatelessWidget {
                 ),
                 const Spacer(),
                 // Navigation
-                Row(
-                  children: [
-                    _buildNavItem('Home', true),
-                    _buildNavItem('Race Results', false, onTap: () {
-                      Navigator.pushNamed(context, '/results');
-                    }),
-                    _buildNavItem('Pricing', false, onTap: () {
-                      Navigator.pushNamed(context, '/pricing');
-                    }),
-                    _buildNavItem('Features', false, onTap: () {
-                      Navigator.pushNamed(context, '/features');
-                    }),
-                    _buildNavItem('Contact', false, onTap: () {
-                      Navigator.pushNamed(context, '/contact');
-                    }),
-                    _buildNavItem('FAQ', false, onTap: () {
-                      Navigator.pushNamed(context, '/faq');
-                    }),
-                    const SizedBox(width: 20),
-                    GestureDetector(
-                      onTap: () => navigateToSearchPage(context),
-                      child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(Icons.search, color: Colors.white, size: 20),
-                    )),
-                    const SizedBox(width: 20),
-                  ],
-                ),
+                isMobile(context)
+                  ? Row(
+                      children: [
+                        _buildMobileMenuButton(context),
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          onTap: () => navigateToSearchPage(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Icon(Icons.search, color: Colors.white, size: 18),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        _buildNavItem(context, 'Home', true),
+                        _buildNavItem(context, 'Race Results', false, onTap: () {
+                          Navigator.pushNamed(context, '/results');
+                        }),
+                        _buildNavItem(context, 'Pricing', false, onTap: () {
+                          Navigator.pushNamed(context, '/pricing');
+                        }),
+                        _buildNavItem(context, 'Features', false, onTap: () {
+                          Navigator.pushNamed(context, '/features');
+                        }),
+                        _buildNavItem(context, 'Contact', false, onTap: () {
+                          Navigator.pushNamed(context, '/contact');
+                        }),
+                        _buildNavItem(context, 'FAQ', false, onTap: () {
+                          Navigator.pushNamed(context, '/faq');
+                        }),
+                        const SizedBox(width: 20),
+                        GestureDetector(
+                          onTap: () => navigateToSearchPage(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.search, color: Colors.white, size: 20),
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                      ],
+                    ),
               ],
             ),
           ),
@@ -327,7 +439,7 @@ class DashboardPage extends StatelessWidget {
                 children: [
                   // Hero Section
                   Container(
-                    height: 500,
+                    height: MediaQuery.of(context).size.width < 768 ? 300 : 500,
                     decoration: const BoxDecoration(
                       image: DecorationImage(
                         image: AssetImage('assets/backgroundlari.jpg'),
@@ -362,14 +474,14 @@ class DashboardPage extends StatelessWidget {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Text(
+                              Text(
                                 'Race Timing Solution',
                                 style: TextStyle(
-                                  fontSize: 56,
+                                  fontSize: MediaQuery.of(context).size.width < 768 ? 28 : 56,
                                   fontWeight: FontWeight.w900,
                                   color: Colors.white,
                                   letterSpacing: 2,
-                                  shadows: [
+                                  shadows: const [
                                     Shadow(
                                       offset: Offset(2, 2),
                                       blurRadius: 4,
@@ -381,10 +493,18 @@ class DashboardPage extends StatelessWidget {
                               ),
                               const SizedBox(height: 20),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: getResponsiveValue(
+                                    context,
+                                    mobile: 20,
+                                    tablet: 25,
+                                    desktop: 30,
+                                  ),
+                                  vertical: 12,
+                                ),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFE91E63).withOpacity(0.9),
-                                  borderRadius: BorderRadius.circular(30),
+                                  borderRadius: BorderRadius.circular(40),
                                   boxShadow: [
                                     BoxShadow(
                                       color: const Color(0xFFE91E63).withOpacity(0.3),
@@ -393,13 +513,13 @@ class DashboardPage extends StatelessWidget {
                                     ),
                                   ],
                                 ),
-                                child: const Text(
+                                child: Text(
                                   'Precision • Speed • Reliability',
                                   style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
+                                    fontSize: MediaQuery.of(context).size.width < 768 ? 14 : 18,
+                                    fontWeight: FontWeight.w700,
                                     color: Colors.white,
-                                    letterSpacing: 1,
+                                    letterSpacing: 0.4,
                                   ),
                                 ),
                               ),
@@ -439,47 +559,67 @@ class DashboardPage extends StatelessWidget {
                           ),
                           child: Column(
                             children: [
-                              const Text(
+                              Text(
                                 'Hi, race directors!',
                                 style: TextStyle(
                                   fontSize: 32,
                                   fontWeight: FontWeight.w800,
                                   color: Color(0xFFE91E63),
-                                  letterSpacing: 1,
+                                  letterSpacing: 0.4,
                                 ),
                               ),
                               const SizedBox(height: 25),
-                              const Text(
+                              Text(
                                 'Looking for a seamless and accurate race timing solution? Our RFID technology guarantees precise tracking for every participant, giving you one less thing to worry about on race day!',
                                 style: TextStyle(
-                                  fontSize: 18,
-                                  color: Color(0xFF2C3E50),
+                                  fontSize: getResponsiveValue(
+                                    context,
+                                    mobile: 16,
+                                    tablet: 17,
+                                    desktop: 18,
+                                  ),
+                                  color: const Color(0xFF2C3E50),
                                   height: 1.6,
                                 ),
                                 textAlign: TextAlign.center,
                               ),
                               const SizedBox(height: 30),
-                              const Text(
+                              Text(
                                 'Learn more about our offerings through the links below:',
                                 style: TextStyle(
-                                  fontSize: 18,
-                                  color: Color(0xFF34495E),
-                                  fontWeight: FontWeight.w600,
+                                  fontSize: getResponsiveValue(
+                                    context,
+                                    mobile: 16,
+                                    tablet: 17,
+                                    desktop: 18,
+                                  ),
+                                  color: const Color(0xFF34495E),
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                               const SizedBox(height: 25),
-                              Row(
+                              isMobile(context) 
+                                ? Column(
+                                    children: [
+                                      _buildPinkLink(context, 'PRICING', '/pricing'),
+                                      const SizedBox(height: 15),
+                                      _buildPinkLink(context, 'FEATURES', '/features'),
+                                      const SizedBox(height: 15),
+                                      _buildPinkLink(context, 'FAQ', '/faq'),
+                                    ],
+                                  )
+                                : Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  _buildPinkLink('PRICING', '/pricing'),
+                                      _buildPinkLink(context, 'PRICING', '/pricing'),
                                   const SizedBox(width: 40),
-                                  _buildPinkLink('FEATURES', '/features'),
+                                      _buildPinkLink(context, 'FEATURES', '/features'),
                                   const SizedBox(width: 40),
-                                  _buildPinkLink('FAQ', '/faq'),
+                                      _buildPinkLink(context, 'FAQ', '/faq'),
                                 ],
                               ),
                               const SizedBox(height: 35),
-                              _buildModernButton('Request Quote', () {
+                              _buildModernButton(context, 'Request Quote', () {
                                 final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
                                 openUrl(whatsappUrl);
                               }),
@@ -488,28 +628,28 @@ class DashboardPage extends StatelessWidget {
                         ),
                         const SizedBox(height: 60),
                         // Sport Cards Section
-                        const Text(
+                        Text(
                           'Our Expertise',
                           style: TextStyle(
-                            fontSize: 36,
+            fontSize: MediaQuery.of(context).size.width < 768 ? 24 : 36,
                             fontWeight: FontWeight.w800,
-                            color: Color(0xFF2C3E50),
-                            letterSpacing: 1,
+                            color: const Color(0xFF2C3E50),
+                            letterSpacing: 0.4,
                           ),
                         ),
                         const SizedBox(height: 15),
-                        const Text(
+                        Text(
                           'Professional timing solutions for every sport',
                           style: TextStyle(
-                            fontSize: 18,
-                            color: Color(0xFF7F8C8D),
+            fontSize: MediaQuery.of(context).size.width < 768 ? 14 : 18,
+                            color: const Color(0xFF7F8C8D),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                         const SizedBox(height: 50),
                         _buildSportCardsSharedHover(),
                         const SizedBox(height: 50),
-                        _buildModernButton('Get Started Today', () {
+                        _buildModernButton(context, 'Get Started Today', () {
                           Navigator.pushNamed(context, '/pricing');
                         }),
                       ],
@@ -519,110 +659,72 @@ class DashboardPage extends StatelessWidget {
               ),
             ),
           ),
-          // Footer
-          Container(
+          // Footer: desktop original, mobile flexible full-width
+          RevealOnBottom(child: Container(
+            width: double.infinity,
             height: 60,
             color: const Color(0xFF424242),
-            child: Row(
+            child: isMobile(context) ? Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  const Icon(Icons.info_outline, color: Colors.white, size: 18),
+                  _footerLink(context, 'Home', () { Navigator.pushNamedAndRemoveUntil(context, '/', (r) => false); }),
+                  _sep(), _footerLink(context, 'Pricing', () { Navigator.pushNamed(context, '/pricing'); }),
+                  _sep(), _footerLink(context, 'Features', () { Navigator.pushNamed(context, '/features'); }),
+                  _sep(), _footerLink(context, 'T&C', () { Navigator.pushNamed(context, '/terms'); }),
+                  _sep(), _footerLink(context, 'Contact', () { Navigator.pushNamed(context, '/contact'); }),
+                  _sep(), _footerLink(context, 'FAQ', () { Navigator.pushNamed(context, '/faq'); }),
+                  const SizedBox(width: 10),
+                  _footerLink(context, 'Request Quote (via Whatsapp)', () { final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0'; openUrl(whatsappUrl); }),
+                  const SizedBox(width: 10), const Icon(Icons.email, color: Colors.white, size: 18), const SizedBox(width: 6), const Text('runmlgrun@gmail.com', style: TextStyle(color: Colors.white, fontSize: 12)),
+                ],
+              ),
+            ) : Row(
               children: [
                 const SizedBox(width: 20),
                 const Icon(Icons.info_outline, color: Colors.white, size: 20),
                 const SizedBox(width: 10),
                 Row(
                   children: [
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
-                      },
-                      child: const Text(
-                        'Home',
-                        style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
-                      ),
-                    ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamed(context, '/pricing');
-                      },
-                      child: const Text(
-                        'Pricing',
-                        style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
-                      ),
-                    ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamed(context, '/features');
-                      },
-                      child: const Text(
-                        'Features',
-                        style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
-                      ),
-                    ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamed(context, '/terms');
-                      },
-                      child: const Text(
-                        'T&C',
-                        style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
-                      ),
-                    ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamed(context, '/contact');
-                      },
-                      child: const Text(
-                        'Contact',
-                        style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
-                      ),
-                    ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamed(context, '/faq');
-                      },
-                      child: const Text(
-                        'FAQ',
-                        style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
-                      ),
-                    ),
+                    GestureDetector(onTap: () { Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false); }, child: Text('Home', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5))),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    GestureDetector(onTap: () { Navigator.pushNamed(context, '/pricing'); }, child: Text('Pricing', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5))),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    GestureDetector(onTap: () { Navigator.pushNamed(context, '/features'); }, child: Text('Features', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5))),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    GestureDetector(onTap: () { Navigator.pushNamed(context, '/terms'); }, child: Text('T&C', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5))),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    GestureDetector(onTap: () { Navigator.pushNamed(context, '/contact'); }, child: Text('Contact', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5))),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    GestureDetector(onTap: () { Navigator.pushNamed(context, '/faq'); }, child: Text('FAQ', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5))),
                   ],
                 ),
                 const Spacer(),
-                GestureDetector(
-                  onTap: () {
-                    final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
-                    openUrl(whatsappUrl);
-                  },
-                  child: const Text(
-                    'Request Quote (via Whatsapp)',
-                    style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
-                  ),
-                ),
+                GestureDetector(onTap: () { final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0'; openUrl(whatsappUrl); }, child: Text('Request Quote (via Whatsapp)', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5))),
                 const Spacer(),
-                const Icon(Icons.email, color: Colors.white, size: 20),
-                const SizedBox(width: 10),
-                const Text(
-                  'runmlgrun@gmail.com',
-                  style: TextStyle(color: Colors.white, fontSize: 14),
-                ),
-                const SizedBox(width: 20),
+                const Icon(Icons.email, color: Colors.white, size: 20), const SizedBox(width: 10), Text('runmlgrun@gmail.com', style: TextStyle(color: Colors.white, fontSize: 14)), const SizedBox(width: 20),
               ],
             ),
-          ),
+          )),
         ],
       ),
     );
   }
 
-  Widget _buildNavItem(String text, bool isActive, {VoidCallback? onTap}) {
+  Widget _buildNavItem(BuildContext context, String text, bool isActive, {VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
+        padding: EdgeInsets.symmetric(
+          horizontal: isMobile(context) ? 12 : 20,
+          vertical: isMobile(context) ? 15 : 25,
+        ),
         decoration: BoxDecoration(
           color: isActive ? Colors.white.withOpacity(0.15) : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
@@ -632,7 +734,7 @@ class DashboardPage extends StatelessWidget {
           style: TextStyle(
             color: Colors.white,
             fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-            fontSize: 15,
+            fontSize: isMobile(context) ? 13 : 15,
             letterSpacing: 0.5,
           ),
         ),
@@ -640,7 +742,7 @@ class DashboardPage extends StatelessWidget {
     );
   }
 
-  Widget _buildPinkLink(String text, String route) {
+  Widget _buildPinkLink(BuildContext context, String text, String route) {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: Builder(builder: (context) => GestureDetector(
@@ -648,7 +750,10 @@ class DashboardPage extends StatelessWidget {
           Navigator.pushNamed(context, route);
         },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        padding: EdgeInsets.symmetric(
+          horizontal: MediaQuery.of(context).size.width < 768 ? 15 : 20,
+          vertical: MediaQuery.of(context).size.width < 768 ? 8 : 10,
+        ),
         decoration: BoxDecoration(
           color: const Color(0xFFE91E63).withOpacity(0.1),
           borderRadius: BorderRadius.circular(25),
@@ -659,9 +764,9 @@ class DashboardPage extends StatelessWidget {
         ),
         child: Text(
           text,
-          style: const TextStyle(
-            color: Color(0xFFE91E63),
-            fontSize: 16,
+          style: TextStyle(
+            color: const Color(0xFFE91E63),
+            fontSize: MediaQuery.of(context).size.width < 768 ? 12 : 14,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.5,
           ),
@@ -671,22 +776,27 @@ class DashboardPage extends StatelessWidget {
     );
   }
 
-  Widget _buildModernButton(String text, VoidCallback onPressed) {
+  Widget _buildModernButton(BuildContext context, String text, VoidCallback onPressed) {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: Container(
+      width: MediaQuery.of(context).size.width < 768 ? 320 : 320,
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.of(context).size.width < 768 ? 320 : 320,
+        minWidth: 220,
+      ),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFFE91E63), Color(0xFFC2185B)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(40),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFE91E63).withOpacity(0.4),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
+            color: const Color(0xFFE91E63).withOpacity(0.35),
+            blurRadius: 16,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -695,20 +805,28 @@ class DashboardPage extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
-          padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 18),
+          padding: EdgeInsets.symmetric(
+            horizontal: MediaQuery.of(context).size.width < 768 ? 24 : 44,
+            vertical: MediaQuery.of(context).size.width < 768 ? 18 : 18,
+          ),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30),
+            borderRadius: BorderRadius.circular(40),
           ),
         ),
-        child: Text(
-          text,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-            letterSpacing: 1,
+        child: Center(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            softWrap: false,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+              letterSpacing: 0.4,
+            ),
           ),
-          ),
+        ),
         ),
       ),
     );
@@ -721,7 +839,7 @@ class DashboardPage extends StatelessWidget {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Search'),
+          title: Text('Search'),
           content: TextField(
             controller: searchController,
             decoration: const InputDecoration(
@@ -731,7 +849,7 @@ class DashboardPage extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Cancel'),
+              child: Text('Cancel'),
             ),
             ElevatedButton(
               onPressed: () {
@@ -739,7 +857,7 @@ class DashboardPage extends StatelessWidget {
                 Navigator.of(dialogContext).pop();
                 Navigator.pushNamed(context, '/results', arguments: {'query': query});
               },
-              child: const Text('Search'),
+              child: Text('Search'),
             ),
           ],
         );
@@ -758,8 +876,8 @@ class DashboardPage extends StatelessWidget {
             curve: Curves.easeInOut,
             transform: Matrix4.identity()
               ..scale(showInfo ? 1.03 : 1.0),
-            width: 250,
-            height: 220,
+            width: MediaQuery.of(context).size.width < 768 ? 280 : 250,
+            height: MediaQuery.of(context).size.width < 768 ? 200 : 220,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -941,17 +1059,30 @@ class DashboardPage extends StatelessWidget {
           return _buildSportCard(title, image, accent, desc);
         }
 
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            buildItem(0, 'Running', 'assets/lari.jpg', const Color(0xFF3498DB),
-                'Running events demand speed, stamina, and precise split timing for every athlete.'),
-            buildItem(1, 'Cycling', 'assets/sepeda.jpg', const Color(0xFFE74C3C),
-                'Cycling races require accurate checkpoints, drafting awareness, and secure lap tracking.'),
-            buildItem(2, 'Triathlon', 'assets/triathlon.jpg', const Color(0xFF2ECC71),
-                'Triathlon combines swim, bike, and run with flawless transitions and end-to-end timing.'),
-          ],
-        );
+        return isMobile(context) 
+          ? Column(
+              children: [
+                buildItem(0, 'Running', 'assets/lari.jpg', const Color(0xFF3498DB),
+                    'Running events demand speed, stamina, and precise split timing for every athlete.'),
+                const SizedBox(height: 20),
+                buildItem(1, 'Cycling', 'assets/sepeda.jpg', const Color(0xFFE74C3C),
+                    'Cycling races require accurate checkpoints, drafting awareness, and secure lap tracking.'),
+                const SizedBox(height: 20),
+                buildItem(2, 'Triathlon', 'assets/triathlon.jpg', const Color(0xFF2ECC71),
+                    'Triathlon combines swim, bike, and run with flawless transitions and end-to-end timing.'),
+              ],
+            )
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                buildItem(0, 'Running', 'assets/lari.jpg', const Color(0xFF3498DB),
+                    'Running events demand speed, stamina, and precise split timing for every athlete.'),
+                buildItem(1, 'Cycling', 'assets/sepeda.jpg', const Color(0xFFE74C3C),
+                    'Cycling races require accurate checkpoints, drafting awareness, and secure lap tracking.'),
+                buildItem(2, 'Triathlon', 'assets/triathlon.jpg', const Color(0xFF2ECC71),
+                    'Triathlon combines swim, bike, and run with flawless transitions and end-to-end timing.'),
+              ],
+            );
       },
     );
   }
@@ -1047,38 +1178,58 @@ class PricingPage extends StatelessWidget {
                 ),
                 const Spacer(),
                 // Navigation
-                Row(
-                  children: [
-                    _buildNavItem('Home', false, onTap: () {
-                      Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
-                    }),
-                    _buildNavItem('Race Results', false, onTap: () {
-                      Navigator.pushNamed(context, '/results');
-                    }),
-                    _buildNavItem('Pricing', true),
-                    _buildNavItem('Features', false, onTap: () {
-                      Navigator.pushNamed(context, '/features');
-                    }),
-                    _buildNavItem('Contact', false, onTap: () {
-                      Navigator.pushNamed(context, '/contact');
-                    }),
-                    _buildNavItem('FAQ', false, onTap: () {
-                      Navigator.pushNamed(context, '/faq');
-                    }),
-                    const SizedBox(width: 20),
-                    GestureDetector(
-                      onTap: () => navigateToSearchPage(context),
-                      child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(Icons.search, color: Colors.white, size: 20),
-                    )),
-                    const SizedBox(width: 20),
-                  ],
-                ),
+                isMobile(context)
+                  ? Row(
+                      children: [
+                        _buildMobileMenuButton(context),
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          onTap: () => navigateToSearchPage(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Icon(Icons.search, color: Colors.white, size: 18),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        _buildNavItem(context, 'Home', false, onTap: () {
+                          Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+                        }),
+                        _buildNavItem(context, 'Race Results', false, onTap: () {
+                          Navigator.pushNamed(context, '/results');
+                        }),
+                        _buildNavItem(context, 'Pricing', true),
+                        _buildNavItem(context, 'Features', false, onTap: () {
+                          Navigator.pushNamed(context, '/features');
+                        }),
+                        _buildNavItem(context, 'Contact', false, onTap: () {
+                          Navigator.pushNamed(context, '/contact');
+                        }),
+                        _buildNavItem(context, 'FAQ', false, onTap: () {
+                          Navigator.pushNamed(context, '/faq');
+                        }),
+                        const SizedBox(width: 20),
+                        GestureDetector(
+                          onTap: () => navigateToSearchPage(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.search, color: Colors.white, size: 20),
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                      ],
+                    ),
               ],
             ),
           ),
@@ -1114,20 +1265,23 @@ class PricingPage extends StatelessWidget {
                   ),
                   // Pricing Packages
                   Container(
-                    padding: const EdgeInsets.all(60),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isMobile(context) ? 16 : 60,
+                      vertical: isMobile(context) ? 24 : 60,
+                    ),
                     child: Column(
                       children: [
-                        const Text(
+                        Text(
                           'Choose Your Perfect Package',
                           style: TextStyle(
                             fontSize: 36,
                             fontWeight: FontWeight.w800,
                             color: Color(0xFF2C3E50),
-                            letterSpacing: 1,
+                            letterSpacing: 0.4,
                           ),
                         ),
                         const SizedBox(height: 15),
-                        const Text(
+                        Text(
                           'Professional race timing solutions for every event size',
                           style: TextStyle(
                             fontSize: 18,
@@ -1137,64 +1291,140 @@ class PricingPage extends StatelessWidget {
                         ),
                         const SizedBox(height: 60),
                         // Pricing Cards
-                        Row(
-                          children: [
-                            Expanded(child: _buildPricingCard(
-                              'Basic',
-                              '500',
-                              [
-                                'Race Timing System',
-                                'BIB + chip',
-                                'BIB check at racepack collection',
-                                'BIB check at finish line',
-                              ],
-                              '34.500.000',
-                              false,
-                            )),
-                            const SizedBox(width: 20),
-                            Expanded(child: _buildPricingCard(
-                              'Standard',
-                              '1000',
-                              [
-                                'Race Timing System',
-                                'BIB + chip',
-                                'BIB check at racepack collection',
-                                'Additional check point',
-                                'BIB check at finish line',
-                              ],
-                              '52.000.000',
-                              false,
-                            )),
-                            const SizedBox(width: 20),
-                            Expanded(child: _buildPricingCard(
-                              'Pro',
-                              '1500',
-                              [
-                                'Race Timing System',
-                                'BIB + chip',
-                                'BIB check at racepack collection',
-                                '2 Additional check point',
-                                'BIB check at finish line',
-                              ],
-                              '69.500.000',
-                              true,
-                            )),
-                            const SizedBox(width: 20),
-                            Expanded(child: _buildPricingCard(
-                              'Elite',
-                              '2000',
-                              [
-                                'Race Timing System',
-                                'BIB + chip',
-                                'BIB check at racepack collection',
-                                '2 Additional check point',
-                                'BIB check at finish line',
-                              ],
-                              '74.000.000',
-                              false,
-                            )),
-                          ],
-                        ),
+                        isMobile(context)
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  _buildPricingCard(
+                                    context,
+                                    'Basic',
+                                    '500',
+                                    [
+                                      'Race Timing System',
+                                      'BIB + chip',
+                                      'BIB check at racepack collection',
+                                      'BIB check at finish line',
+                                    ],
+                                    '34.500.000',
+                                    false,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _buildPricingCard(
+                                    context,
+                                    'Standard',
+                                    '1000',
+                                    [
+                                      'Race Timing System',
+                                      'BIB + chip',
+                                      'BIB check at racepack collection',
+                                      'Additional check point',
+                                      'BIB check at finish line',
+                                    ],
+                                    '52.000.000',
+                                    false,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _buildPricingCard(
+                                    context,
+                                    'Pro',
+                                    '1500',
+                                    [
+                                      'Race Timing System',
+                                      'BIB + chip',
+                                      'BIB check at racepack collection',
+                                      '2 Additional check point',
+                                      'BIB check at finish line',
+                                    ],
+                                    '69.500.000',
+                                    true,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _buildPricingCard(
+                                    context,
+                                    'Elite',
+                                    '2000',
+                                    [
+                                      'Race Timing System',
+                                      'BIB + chip',
+                                      'BIB check at racepack collection',
+                                      '2 Additional check point',
+                                      'BIB check at finish line',
+                                    ],
+                                    '74.000.000',
+                                    false,
+                                  ),
+                                ],
+                              )
+                            : Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildPricingCard(
+                                      context,
+                                      'Basic',
+                                      '500',
+                                      [
+                                        'Race Timing System',
+                                        'BIB + chip',
+                                        'BIB check at racepack collection',
+                                        'BIB check at finish line',
+                                      ],
+                                      '34.500.000',
+                                      false,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 20),
+                                  Expanded(
+                                    child: _buildPricingCard(
+                                      context,
+                                      'Standard',
+                                      '1000',
+                                      [
+                                        'Race Timing System',
+                                        'BIB + chip',
+                                        'BIB check at racepack collection',
+                                        'Additional check point',
+                                        'BIB check at finish line',
+                                      ],
+                                      '52.000.000',
+                                      false,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 20),
+                                  Expanded(
+                                    child: _buildPricingCard(
+                                      context,
+                                      'Pro',
+                                      '1500',
+                                      [
+                                        'Race Timing System',
+                                        'BIB + chip',
+                                        'BIB check at racepack collection',
+                                        '2 Additional check point',
+                                        'BIB check at finish line',
+                                      ],
+                                      '69.500.000',
+                                      true,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 20),
+                                  Expanded(
+                                    child: _buildPricingCard(
+                                      context,
+                                      'Elite',
+                                      '2000',
+                                      [
+                                        'Race Timing System',
+                                        'BIB + chip',
+                                        'BIB check at racepack collection',
+                                        '2 Additional check point',
+                                        'BIB check at finish line',
+                                      ],
+                                      '74.000.000',
+                                      false,
+                                    ),
+                                  ),
+                                ],
+                              ),
                         const SizedBox(height: 80),
                         // Custom Solution Section
                         Container(
@@ -1209,7 +1439,7 @@ class PricingPage extends StatelessWidget {
                           ),
                           child: Column(
                             children: [
-                              const Text(
+                              Text(
                                 'Looking for a customized solution?',
                                 style: TextStyle(
                                   fontSize: 28,
@@ -1218,7 +1448,7 @@ class PricingPage extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(height: 15),
-                              const Text(
+                              Text(
                                 'Contact us today to discuss your specific needs and get a tailored quote for your race event.',
                                 style: TextStyle(
                                   fontSize: 16,
@@ -1228,7 +1458,7 @@ class PricingPage extends StatelessWidget {
                                 textAlign: TextAlign.center,
                               ),
                               const SizedBox(height: 30),
-                              _buildModernButton('Request Custom Quote', () {
+                              _buildModernButton(context, 'Request Custom Quote', () {
                                 final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
                                 openUrl(whatsappUrl);
                               }),
@@ -1242,110 +1472,74 @@ class PricingPage extends StatelessWidget {
               ),
             ),
           ),
-          // Footer
-          Container(
+          // Footer: desktop original, mobile flexible full-width
+          RevealOnBottom(child: Container(
+            width: double.infinity,
             height: 60,
             color: const Color(0xFF424242),
-            child: Row(
-              children: [
-                const SizedBox(width: 20),
-                const Icon(Icons.info_outline, color: Colors.white, size: 20),
-                const SizedBox(width: 10),
-                Row(
+            child: isMobile(context)
+              ? Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Wrap(
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      const Icon(Icons.info_outline, color: Colors.white, size: 18),
+                      _footerLink(context, 'Home', () { Navigator.pushNamedAndRemoveUntil(context, '/', (r) => false); }),
+                      _sep(), _footerLink(context, 'Pricing', () { Navigator.pushNamed(context, '/pricing'); }),
+                      _sep(), _footerLink(context, 'Features', () { Navigator.pushNamed(context, '/features'); }),
+                      _sep(), _footerLink(context, 'T&C', () { Navigator.pushNamed(context, '/terms'); }),
+                      _sep(), _footerLink(context, 'Contact', () { Navigator.pushNamed(context, '/contact'); }),
+                      _sep(), _footerLink(context, 'FAQ', () { Navigator.pushNamed(context, '/faq'); }),
+                      const SizedBox(width: 10),
+                      _footerLink(context, 'Request Quote (via Whatsapp)', () { final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0'; openUrl(whatsappUrl); }),
+                      const SizedBox(width: 10), const Icon(Icons.email, color: Colors.white, size: 18), const SizedBox(width: 6), const Text('runmlgrun@gmail.com', style: TextStyle(color: Colors.white, fontSize: 12)),
+                    ],
+                  ),
+                )
+              : Row(
                   children: [
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
-                      },
-                      child: const Text(
-                        'Home',
-                        style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
-                      ),
+                    const SizedBox(width: 20),
+                    const Icon(Icons.info_outline, color: Colors.white, size: 20),
+                    const SizedBox(width: 10),
+                    Row(
+                      children: [
+                        GestureDetector(onTap: () { Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false); }, child: Text('Home', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5))),
+                        Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                        GestureDetector(onTap: () { Navigator.pushNamed(context, '/pricing'); }, child: Text('Pricing', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5))),
+                        Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                        GestureDetector(onTap: () { Navigator.pushNamed(context, '/features'); }, child: Text('Features', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5))),
+                        Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                        GestureDetector(onTap: () { Navigator.pushNamed(context, '/terms'); }, child: Text('T&C', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5))),
+                        Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                        GestureDetector(onTap: () { Navigator.pushNamed(context, '/contact'); }, child: Text('Contact', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5))),
+                        Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                        GestureDetector(onTap: () { Navigator.pushNamed(context, '/faq'); }, child: Text('FAQ', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5))),
+                      ],
                     ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamed(context, '/pricing');
-                      },
-                      child: const Text(
-                        'Pricing',
-                        style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
-                      ),
-                    ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamed(context, '/features');
-                      },
-                      child: const Text(
-                        'Features',
-                        style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
-                      ),
-                    ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamed(context, '/terms');
-                      },
-                      child: const Text(
-                        'T&C',
-                        style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
-                      ),
-                    ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamed(context, '/contact');
-                      },
-                      child: const Text(
-                        'Contact',
-                        style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
-                      ),
-                    ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamed(context, '/faq');
-                      },
-                      child: const Text(
-                        'FAQ',
-                        style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
-                      ),
-                    ),
+                    const Spacer(),
+                    GestureDetector(onTap: () { final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0'; openUrl(whatsappUrl); }, child: Text('Request Quote (via Whatsapp)', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5))),
+                    const Spacer(),
+                    const Icon(Icons.email, color: Colors.white, size: 20), const SizedBox(width: 10), Text('runmlgrun@gmail.com', style: TextStyle(color: Colors.white, fontSize: 14)), const SizedBox(width: 20),
                   ],
                 ),
-                const Spacer(),
-                GestureDetector(
-                  onTap: () {
-                    final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
-                    openUrl(whatsappUrl);
-                  },
-                  child: const Text(
-                    'Request Quote (via Whatsapp)',
-                    style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
-                  ),
-                ),
-                const Spacer(),
-                const Icon(Icons.email, color: Colors.white, size: 20),
-                const SizedBox(width: 10),
-                const Text(
-                  'runmlgrun@gmail.com',
-                  style: TextStyle(color: Colors.white, fontSize: 14),
-                ),
-                const SizedBox(width: 20),
-              ],
-            ),
-          ),
+          )),
         ],
       ),
     );
   }
 
-  Widget _buildNavItem(String text, bool isActive, {VoidCallback? onTap}) {
+  Widget _buildNavItem(BuildContext context, String text, bool isActive, {VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
+        padding: EdgeInsets.symmetric(
+          horizontal: isMobile(context) ? 12 : 20,
+          vertical: isMobile(context) ? 15 : 25,
+        ),
         decoration: BoxDecoration(
           color: isActive ? Colors.white.withOpacity(0.15) : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
@@ -1355,7 +1549,7 @@ class PricingPage extends StatelessWidget {
           style: TextStyle(
             color: Colors.white,
             fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-            fontSize: 15,
+            fontSize: isMobile(context) ? 13 : 15,
             letterSpacing: 0.5,
           ),
         ),
@@ -1363,7 +1557,7 @@ class PricingPage extends StatelessWidget {
     );
   }
 
-  Widget _buildPricingCard(String title, String runners, List<String> features, String price, bool isPopular) {
+  Widget _buildPricingCard(BuildContext context, String title, String runners, List<String> features, String price, bool isPopular) {
     return Container(
       height: isPopular ? 580 : 540, // Reduced height for all packages
       decoration: BoxDecoration(
@@ -1397,13 +1591,13 @@ class PricingPage extends StatelessWidget {
                     bottomRight: Radius.circular(20),
                   ),
                 ),
-                child: const Text(
+                child: Text(
                   'MOST POPULAR',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: 1,
+                    letterSpacing: 0.4,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -1420,8 +1614,8 @@ class PricingPage extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     color: const Color(0xFFE91E63),
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.4,
                   ),
                 ),
                 const SizedBox(height: 5),
@@ -1431,7 +1625,7 @@ class PricingPage extends StatelessWidget {
                     fontSize: 32,
                     fontWeight: FontWeight.w900,
                     color: Color(0xFF2C3E50),
-                    letterSpacing: 1,
+                    letterSpacing: 0.4,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -1477,13 +1671,13 @@ class PricingPage extends StatelessWidget {
                     fontSize: 28,
                     fontWeight: FontWeight.w900,
                     color: Color(0xFFE91E63),
-                    letterSpacing: 1,
+                    letterSpacing: 0.4,
                   ),
                 ),
                 const SizedBox(height: 25),
                 SizedBox(
                   width: double.infinity,
-                  child: _buildModernButton('Request Quote', () {
+                  child: _buildModernButton(context, 'Request Quote', () {
                     final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
                     openUrl(whatsappUrl);
                   }),
@@ -1496,20 +1690,27 @@ class PricingPage extends StatelessWidget {
     );
   }
 
-  Widget _buildModernButton(String text, VoidCallback onPressed) {
-    return Container(
+  Widget _buildModernButton(BuildContext context, String text, VoidCallback onPressed) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: Container(
+      width: MediaQuery.of(context).size.width < 768 ? 320 : 320,
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.of(context).size.width < 768 ? 320 : 320,
+        minWidth: 220,
+      ),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFFE91E63), Color(0xFFC2185B)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(40),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFE91E63).withOpacity(0.4),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
+            color: const Color(0xFFE91E63).withOpacity(0.35),
+            blurRadius: 16,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -1518,19 +1719,28 @@ class PricingPage extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
-          padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+          padding: EdgeInsets.symmetric(
+            horizontal: MediaQuery.of(context).size.width < 768 ? 24 : 44,
+            vertical: MediaQuery.of(context).size.width < 768 ? 18 : 18,
+          ),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30),
+            borderRadius: BorderRadius.circular(40),
           ),
         ),
-        child: Text(
-          text,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-            letterSpacing: 1,
+        child: Center(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            softWrap: false,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+              letterSpacing: 0.4,
+            ),
           ),
+        ),
         ),
       ),
     );
@@ -1591,39 +1801,58 @@ class FeaturesPage extends StatelessWidget {
                 ),
                 const Spacer(),
                 // Navigation
-                Row(
-                  children: [
-                    _buildNavItem('Home', false, onTap: () {
-                      Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
-                    }),
-                    _buildNavItem('Race Results', false, onTap: () {
-                      Navigator.pushNamed(context, '/results');
-                    }),
-                    _buildNavItem('Pricing', false, onTap: () {
-                      Navigator.pushNamed(context, '/pricing');
-                    }),
-                    _buildNavItem('Features', true),
-                    _buildNavItem('Contact', false, onTap: () {
-                      Navigator.pushNamed(context, '/contact');
-                    }),
-                    _buildNavItem('FAQ', false, onTap: () {
-                      Navigator.pushNamed(context, '/faq');
-                    }),
-                    const SizedBox(width: 20),
-                    GestureDetector(
-                      onTap: () => navigateToSearchPage(context),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
+                isMobile(context)
+                  ? Row(
+                      children: [
+                        _buildMobileMenuButton(context),
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          onTap: () => navigateToSearchPage(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Icon(Icons.search, color: Colors.white, size: 18),
+                          ),
                         ),
-                        child: const Icon(Icons.search, color: Colors.white, size: 20),
-                      ),
+                        const SizedBox(width: 6),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        _buildNavItem(context, 'Home', false, onTap: () {
+                          Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+                        }),
+                        _buildNavItem(context, 'Race Results', false, onTap: () {
+                          Navigator.pushNamed(context, '/results');
+                        }),
+                        _buildNavItem(context, 'Pricing', false, onTap: () {
+                          Navigator.pushNamed(context, '/pricing');
+                        }),
+                        _buildNavItem(context, 'Features', true),
+                        _buildNavItem(context, 'Contact', false, onTap: () {
+                          Navigator.pushNamed(context, '/contact');
+                        }),
+                        _buildNavItem(context, 'FAQ', false, onTap: () {
+                          Navigator.pushNamed(context, '/faq');
+                        }),
+                        const SizedBox(width: 20),
+                        GestureDetector(
+                          onTap: () => navigateToSearchPage(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.search, color: Colors.white, size: 20),
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                      ],
                     ),
-                    const SizedBox(width: 20),
-                  ],
-                ),
               ],
             ),
           ),
@@ -1667,91 +1896,155 @@ class FeaturesPage extends StatelessWidget {
                   // Features Section
                   Container(
                     color: const Color(0xFFF8F9FA),
-                    padding: const EdgeInsets.all(60),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isMobile(context) ? 16 : 60,
+                      vertical: isMobile(context) ? 24 : 60,
+                    ),
                     child: Column(
                       children: [
                         // First Row of Features
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildFeatureCard(
-                                Icons.phone_android,
-                                'RFID Technology for Accurate Timing',
-                                'Our system uses advanced RFID (Radio Frequency Identification) technology, ensuring every participant\'s start, checkpoint, and finish times are captured accurately. This eliminates the need for manual timing and guarantees reliable results with minimal error.',
+                        isMobile(context)
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  _buildFeatureCard(
+                                    Icons.phone_android,
+                                    'RFID Technology for Accurate Timing',
+                                    'Our system uses advanced RFID (Radio Frequency Identification) technology, ensuring every participant\'s start, checkpoint, and finish times are captured accurately. This eliminates the need for manual timing and guarantees reliable results with minimal error.',
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _buildFeatureCard(
+                                    Icons.local_shipping,
+                                    'Real-Time Tracking and Results',
+                                    'Stay in control with live tracking. Our system offers real-time updates from multiple checkpoints, allowing race organizers and spectators to monitor progress. Runners can also access their results instantly after crossing the finish line.',
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _buildFeatureCard(
+                                    Icons.view_module,
+                                    'Customizable for Any Event Size',
+                                    'Whether your event has 100 or 10,000 runners, our race timing system is scalable and customizable. We offer a range of packages, ensuring you get the right solution for your race, no matter its size.',
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _buildFeatureCard(
+                                    Icons.credit_card,
+                                    'BIB Integration with RFID Chips',
+                                    'Each runner receives a BIB with an embedded RFID chip, which seamlessly communicates with our timing system. These chips are highly durable and work in all weather conditions, ensuring reliability throughout the race.',
+                                  ),
+                                ],
+                              )
+                            : Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildFeatureCard(
+                                      Icons.phone_android,
+                                      'RFID Technology for Accurate Timing',
+                                      'Our system uses advanced RFID (Radio Frequency Identification) technology, ensuring every participant\'s start, checkpoint, and finish times are captured accurately. This eliminates the need for manual timing and guarantees reliable results with minimal error.',
+                                    ),
+                                  ),
+                                  const SizedBox(width: 20),
+                                  Expanded(
+                                    child: _buildFeatureCard(
+                                      Icons.local_shipping,
+                                      'Real-Time Tracking and Results',
+                                      'Stay in control with live tracking. Our system offers real-time updates from multiple checkpoints, allowing race organizers and spectators to monitor progress. Runners can also access their results instantly after crossing the finish line.',
+                                    ),
+                                  ),
+                                  const SizedBox(width: 20),
+                                  Expanded(
+                                    child: _buildFeatureCard(
+                                      Icons.view_module,
+                                      'Customizable for Any Event Size',
+                                      'Whether your event has 100 or 10,000 runners, our race timing system is scalable and customizable. We offer a range of packages, ensuring you get the right solution for your race, no matter its size.',
+                                    ),
+                                  ),
+                                  const SizedBox(width: 20),
+                                  Expanded(
+                                    child: _buildFeatureCard(
+                                      Icons.credit_card,
+                                      'BIB Integration with RFID Chips',
+                                      'Each runner receives a BIB with an embedded RFID chip, which seamlessly communicates with our timing system. These chips are highly durable and work in all weather conditions, ensuring reliability throughout the race.',
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                            const SizedBox(width: 20),
-                            Expanded(
-                              child: _buildFeatureCard(
-                                Icons.local_shipping,
-                                'Real-Time Tracking and Results',
-                                'Stay in control with live tracking. Our system offers real-time updates from multiple checkpoints, allowing race organizers and spectators to monitor progress. Runners can also access their results instantly after crossing the finish line.',
-                              ),
-                            ),
-                            const SizedBox(width: 20),
-                            Expanded(
-                              child: _buildFeatureCard(
-                                Icons.view_module,
-                                'Customizable for Any Event Size',
-                                'Whether your event has 100 or 10,000 runners, our race timing system is scalable and customizable. We offer a range of packages, ensuring you get the right solution for your race, no matter its size.',
-                              ),
-                            ),
-                            const SizedBox(width: 20),
-                            Expanded(
-                              child: _buildFeatureCard(
-                                Icons.credit_card,
-                                'BIB Integration with RFID Chips',
-                                'Each runner receives a BIB with an embedded RFID chip, which seamlessly communicates with our timing system. These chips are highly durable and work in all weather conditions, ensuring reliability throughout the race.',
-                              ),
-                            ),
-                          ],
-                        ),
                         const SizedBox(height: 30),
                         // Second Row of Features
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildFeatureCard(
-                                Icons.location_on,
-                                'Multiple Checkpoints for Greater Accuracy',
-                                'Our system allows you to set up multiple checkpoints throughout the course, providing split times and tracking participants across different stages of the race. This is ideal for longer races or events with complex routes.',
+                        isMobile(context)
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  _buildFeatureCard(
+                                    Icons.location_on,
+                                    'Multiple Checkpoints for Greater Accuracy',
+                                    'Our system allows you to set up multiple checkpoints throughout the course, providing split times and tracking participants across different stages of the race. This is ideal for longer races or events with complex routes.',
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _buildFeatureCard(
+                                    Icons.flag,
+                                    'Finish Line Precision',
+                                    'With an additional BIB check at the finish line, you can ensure that every runner\'s result is captured instantly and accurately. No missed times, no delays—just flawless results.',
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _buildFeatureCard(
+                                    Icons.smartphone,
+                                    'User-Friendly Interface',
+                                    'Our system is designed to be intuitive for both race directors and participants. With an easy-to-navigate dashboard, you can monitor runners, manage checkpoints, and view results—all in real-time.',
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _buildFeatureCard(
+                                    Icons.analytics,
+                                    'Comprehensive Data Reporting',
+                                    'Post-race, access detailed reports on participants, their times, splits, and overall race statistics. This data can be used to analyze performance, plan future events, and improve race logistics.',
+                                  ),
+                                ],
+                              )
+                            : Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildFeatureCard(
+                                      Icons.location_on,
+                                      'Multiple Checkpoints for Greater Accuracy',
+                                      'Our system allows you to set up multiple checkpoints throughout the course, providing split times and tracking participants across different stages of the race. This is ideal for longer races or events with complex routes.',
+                                    ),
+                                  ),
+                                  const SizedBox(width: 20),
+                                  Expanded(
+                                    child: _buildFeatureCard(
+                                      Icons.flag,
+                                      'Finish Line Precision',
+                                      'With an additional BIB check at the finish line, you can ensure that every runner\'s result is captured instantly and accurately. No missed times, no delays—just flawless results.',
+                                    ),
+                                  ),
+                                  const SizedBox(width: 20),
+                                  Expanded(
+                                    child: _buildFeatureCard(
+                                      Icons.smartphone,
+                                      'User-Friendly Interface',
+                                      'Our system is designed to be intuitive for both race directors and participants. With an easy-to-navigate dashboard, you can monitor runners, manage checkpoints, and view results—all in real-time.',
+                                    ),
+                                  ),
+                                  const SizedBox(width: 20),
+                                  Expanded(
+                                    child: _buildFeatureCard(
+                                      Icons.analytics,
+                                      'Comprehensive Data Reporting',
+                                      'Post-race, access detailed reports on participants, their times, splits, and overall race statistics. This data can be used to analyze performance, plan future events, and improve race logistics.',
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                            const SizedBox(width: 20),
-                            Expanded(
-                              child: _buildFeatureCard(
-                                Icons.flag,
-                                'Finish Line Precision',
-                                'With an additional BIB check at the finish line, you can ensure that every runner\'s result is captured instantly and accurately. No missed times, no delays—just flawless results.',
-                              ),
-                            ),
-                            const SizedBox(width: 20),
-                            Expanded(
-                              child: _buildFeatureCard(
-                                Icons.smartphone,
-                                'User-Friendly Interface',
-                                'Our system is designed to be intuitive for both race directors and participants. With an easy-to-navigate dashboard, you can monitor runners, manage checkpoints, and view results—all in real-time.',
-                              ),
-                            ),
-                            const SizedBox(width: 20),
-                            Expanded(
-                              child: _buildFeatureCard(
-                                Icons.analytics,
-                                'Comprehensive Data Reporting',
-                                'Post-race, access detailed reports on participants, their times, splits, and overall race statistics. This data can be used to analyze performance, plan future events, and improve race logistics.',
-                              ),
-                            ),
-                          ],
-                        ),
                         const SizedBox(height: 50),
-                        // Request Quote Button
-                        _buildModernButton(
-                          'Request Quote',
-                          () {
-                            // Open WhatsApp with pre-filled message
-                            final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
-                            openUrl(whatsappUrl);
-                          },
+                        // Request Quote Button (centered)
+                        Center(
+                          child: _buildModernButton(
+                            context,
+                            'Request Quote',
+                            () {
+                              // Open WhatsApp with pre-filled message
+                              final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
+                              openUrl(whatsappUrl);
+                            },
+                          ),
                         ),
                       ],
                     ),
@@ -1760,11 +2053,41 @@ class FeaturesPage extends StatelessWidget {
               ),
             ),
           ),
-          // Footer
-          Container(
+          // Footer: desktop full-width row, mobile flexible wrap
+          RevealOnBottom(child: Container(
+            width: double.infinity,
+            alignment: Alignment.center,
+            padding: EdgeInsets.symmetric(horizontal: isMobile(context) ? 0 : 0),
             height: 60,
             color: const Color(0xFF424242),
-            child: Row(
+            child: isMobile(context) ? Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                const Icon(Icons.info_outline, color: Colors.white, size: 18),
+                _footerLink(context, 'Home', () { Navigator.pushNamedAndRemoveUntil(context, '/', (r) => false); }),
+                _sep(), _footerLink(context, 'Pricing', () { Navigator.pushNamed(context, '/pricing'); }),
+                _sep(), _footerLink(context, 'Features', () { Navigator.pushNamed(context, '/features'); }),
+                _sep(), _footerLink(context, 'T&C', () { Navigator.pushNamed(context, '/terms'); }),
+                _sep(), _footerLink(context, 'Contact', () { Navigator.pushNamed(context, '/contact'); }),
+                _sep(), _footerLink(context, 'FAQ', () { Navigator.pushNamed(context, '/faq'); }),
+                const SizedBox(width: 10),
+                _footerLink(context, 'Request Quote (via Whatsapp)', () {
+                  final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
+                  openUrl(whatsappUrl);
+                }),
+                const SizedBox(width: 10),
+                const Icon(Icons.email, color: Colors.white, size: 18),
+                const SizedBox(width: 6),
+                const Text('runmlgrun@gmail.com', style: TextStyle(color: Colors.white, fontSize: 12)),
+              ],
+            ),
+            ) : Row(
               children: [
                 const SizedBox(width: 20),
                 const Icon(Icons.info_outline, color: Colors.white, size: 20),
@@ -1775,57 +2098,57 @@ class FeaturesPage extends StatelessWidget {
                       onTap: () {
                         Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
                       },
-                      child: const Text(
+                      child: Text(
                         'Home',
                         style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                       ),
                     ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
                     GestureDetector(
                       onTap: () {
                         Navigator.pushNamed(context, '/pricing');
                       },
-                      child: const Text(
+                      child: Text(
                         'Pricing',
                         style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                       ),
                     ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
                     GestureDetector(
                       onTap: () {
                         Navigator.pushNamed(context, '/features');
                       },
-                      child: const Text(
+                      child: Text(
                         'Features',
                         style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                       ),
                     ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
                     GestureDetector(
                       onTap: () {
                         Navigator.pushNamed(context, '/terms');
                       },
-                      child: const Text(
+                      child: Text(
                         'T&C',
                         style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                       ),
                     ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
                     GestureDetector(
                       onTap: () {
                         Navigator.pushNamed(context, '/contact');
                       },
-                      child: const Text(
+                      child: Text(
                         'Contact',
                         style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                       ),
                     ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
                     GestureDetector(
                       onTap: () {
                         Navigator.pushNamed(context, '/faq');
                       },
-                      child: const Text(
+                      child: Text(
                         'FAQ',
                         style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                       ),
@@ -1838,7 +2161,7 @@ class FeaturesPage extends StatelessWidget {
                     final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
                     openUrl(whatsappUrl);
                   },
-                  child: const Text(
+                  child: Text(
                     'Request Quote (via Whatsapp)',
                     style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                   ),
@@ -1846,24 +2169,27 @@ class FeaturesPage extends StatelessWidget {
                 const Spacer(),
                 const Icon(Icons.email, color: Colors.white, size: 20),
                 const SizedBox(width: 10),
-                const Text(
+                Text(
                   'runmlgrun@gmail.com',
                   style: TextStyle(color: Colors.white, fontSize: 14),
                 ),
                 const SizedBox(width: 20),
               ],
             ),
-          ),
+          )),
         ],
       ),
     );
   }
 
-  Widget _buildNavItem(String text, bool isActive, {VoidCallback? onTap}) {
+  Widget _buildNavItem(BuildContext context, String text, bool isActive, {VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
+        padding: EdgeInsets.symmetric(
+          horizontal: isMobile(context) ? 12 : 20,
+          vertical: isMobile(context) ? 15 : 25,
+        ),
         decoration: BoxDecoration(
           color: isActive ? Colors.white.withOpacity(0.15) : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
@@ -1873,7 +2199,7 @@ class FeaturesPage extends StatelessWidget {
           style: TextStyle(
             color: Colors.white,
             fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-            fontSize: 15,
+            fontSize: isMobile(context) ? 13 : 15,
             letterSpacing: 0.5,
           ),
         ),
@@ -1914,7 +2240,7 @@ class FeaturesPage extends StatelessWidget {
           const SizedBox(height: 20),
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
               color: Color(0xFF2C3E50),
@@ -1938,37 +2264,45 @@ class FeaturesPage extends StatelessWidget {
     );
   }
 
-  Widget _buildModernButton(String text, VoidCallback onPressed) {
+  Widget _buildModernButton(BuildContext context, String text, VoidCallback onPressed) {
     return Container(
+      width: MediaQuery.of(context).size.width < 768 ? 320 : 260,
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.of(context).size.width < 768 ? 320 : 260,
+        minWidth: 220,
+      ),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFFE91E63), Color(0xFFC2185B)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(40),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFE91E63).withOpacity(0.4),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
+            color: const Color(0xFFE91E63).withOpacity(0.35),
+            blurRadius: 16,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(40),
           onTap: onPressed,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+            padding: EdgeInsets.symmetric(
+              horizontal: MediaQuery.of(context).size.width < 768 ? 24 : 44,
+              vertical: 18,
+            ),
             child: Text(
               text,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: Colors.white,
-                letterSpacing: 1,
+                letterSpacing: 0.4,
               ),
             ),
           ),
@@ -2032,39 +2366,58 @@ class ContactPage extends StatelessWidget {
                 ),
                 const Spacer(),
                 // Navigation
-                Row(
-                  children: [
-                    _buildNavItem('Home', false, onTap: () {
-                      Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
-                    }),
-                    _buildNavItem('Race Results', false, onTap: () {
-                      Navigator.pushNamed(context, '/results');
-                    }),
-                    _buildNavItem('Pricing', false, onTap: () {
-                      Navigator.pushNamed(context, '/pricing');
-                    }),
-                    _buildNavItem('Features', false, onTap: () {
-                      Navigator.pushNamed(context, '/features');
-                    }),
-                    _buildNavItem('Contact', true),
-                    _buildNavItem('FAQ', false, onTap: () {
-                      Navigator.pushNamed(context, '/faq');
-                    }),
-                    const SizedBox(width: 20),
-                    GestureDetector(
-                      onTap: () => navigateToSearchPage(context),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
+                isMobile(context)
+                  ? Row(
+                      children: [
+                        _buildMobileMenuButton(context),
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          onTap: () => navigateToSearchPage(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Icon(Icons.search, color: Colors.white, size: 18),
+                          ),
                         ),
-                        child: const Icon(Icons.search, color: Colors.white, size: 20),
-                      ),
+                        const SizedBox(width: 6),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        _buildNavItem(context, 'Home', false, onTap: () {
+                          Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+                        }),
+                        _buildNavItem(context, 'Race Results', false, onTap: () {
+                          Navigator.pushNamed(context, '/results');
+                        }),
+                        _buildNavItem(context, 'Pricing', false, onTap: () {
+                          Navigator.pushNamed(context, '/pricing');
+                        }),
+                        _buildNavItem(context, 'Features', false, onTap: () {
+                          Navigator.pushNamed(context, '/features');
+                        }),
+                        _buildNavItem(context, 'Contact', true),
+                        _buildNavItem(context, 'FAQ', false, onTap: () {
+                          Navigator.pushNamed(context, '/faq');
+                        }),
+                        const SizedBox(width: 20),
+                        GestureDetector(
+                          onTap: () => navigateToSearchPage(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.search, color: Colors.white, size: 20),
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                      ],
                     ),
-                    const SizedBox(width: 20),
-                  ],
-                ),
               ],
             ),
           ),
@@ -2102,17 +2455,17 @@ class ContactPage extends StatelessWidget {
                 child: Column(
                   children: [
                     // Get in Touch Section
-                    const Text(
+                    Text(
                       'Get in Touch',
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.w800,
                         color: Color(0xFFE91E63),
-                        letterSpacing: 1,
+                        letterSpacing: 0.4,
                       ),
                     ),
                     const SizedBox(height: 20),
-                    const Text(
+                    Text(
                       'We\'re here to help you make your race a success! Whether you have questions about our race timing system, need a customized solution, or want to discuss your event in detail, our team is ready to assist you.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
@@ -2130,20 +2483,20 @@ class ContactPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 40),
                     // Contact Information Section
-                    const Text(
+                    Text(
                       'Contact Information',
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.w700,
                         color: Color(0xFF2C3E50),
-                        letterSpacing: 1,
+                        letterSpacing: 0.4,
                       ),
                     ),
                     const SizedBox(height: 30),
                     // Contact Details
                     Column(
                       children: [
-                        const Text(
+                        Text(
                           'Phone: +62-852-0411-5000',
                           style: TextStyle(
                             fontSize: 18,
@@ -2158,7 +2511,7 @@ class ContactPage extends StatelessWidget {
                             final emailUrl = 'mailto:runmlgrun@gmail.com';
                             openUrl(emailUrl);
                           },
-                          child: const Text(
+                          child: Text(
                             'Email: runmlgrun@gmail.com',
                             style: TextStyle(
                               fontSize: 18,
@@ -2169,7 +2522,7 @@ class ContactPage extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 15),
-                        const Text(
+                        Text(
                           'Office: Jl. Mandalika, Malang, Jawa Timur, Indonesia',
                           style: TextStyle(
                             fontSize: 18,
@@ -2181,17 +2534,17 @@ class ContactPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 50),
                     // Request a Quote Section
-                    const Text(
+                    Text(
                       'Request a Quote',
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.w700,
                         color: Color(0xFF2C3E50),
-                        letterSpacing: 1,
+                        letterSpacing: 0.4,
                       ),
                     ),
                     const SizedBox(height: 20),
-                    const Text(
+                    Text(
                       'Interested in our race timing services? Contact us for a personalized quote tailored to your event\'s needs.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
@@ -2203,6 +2556,7 @@ class ContactPage extends StatelessWidget {
                     const SizedBox(height: 30),
                     // Request Quote Button
                     _buildModernButton(
+                      context,
                       'Request Quote',
                       () {
                         final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
@@ -2214,113 +2568,80 @@ class ContactPage extends StatelessWidget {
               ),
             ),
           ),
-          // Footer
-          Container(
+          // Footer: desktop original, mobile flexible full-width
+          RevealOnBottom(child: Container(
+            width: double.infinity,
             height: 60,
             color: const Color(0xFF424242),
-            child: Row(
-              children: [
-                const SizedBox(width: 20),
-                const Icon(Icons.info_outline, color: Colors.white, size: 20),
-                const SizedBox(width: 10),
-                Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
-                      },
-                      child: const Text(
-                        'Home',
-                        style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
-                      ),
+            child: isMobile(context)
+                ? Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Wrap(
+                      alignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        const Icon(Icons.info_outline, color: Colors.white, size: 18),
+                        _footerLink(context, 'Home', () { Navigator.pushNamedAndRemoveUntil(context, '/', (r) => false); }),
+                        _sep(), _footerLink(context, 'Pricing', () { Navigator.pushNamed(context, '/pricing'); }),
+                        _sep(), _footerLink(context, 'Features', () { Navigator.pushNamed(context, '/features'); }),
+                        _sep(), _footerLink(context, 'T&C', () { Navigator.pushNamed(context, '/terms'); }),
+                        _sep(), _footerLink(context, 'Contact', () { Navigator.pushNamed(context, '/contact'); }),
+                        _sep(), _footerLink(context, 'FAQ', () { Navigator.pushNamed(context, '/faq'); }),
+                        const SizedBox(width: 10),
+                        _footerLink(context, 'Request Quote (via Whatsapp)', () {
+                          final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
+                          openUrl(whatsappUrl);
+                        }),
+                        const SizedBox(width: 10),
+                        const Icon(Icons.email, color: Colors.white, size: 18),
+                        const SizedBox(width: 6),
+                        const Text('runmlgrun@gmail.com', style: TextStyle(color: Colors.white, fontSize: 12)),
+                      ],
                     ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamed(context, '/pricing');
-                      },
-                      child: const Text(
-                        'Pricing',
-                        style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
+                  )
+                : Row(
+                    children: [
+                      const SizedBox(width: 20),
+                      const Icon(Icons.info_outline, color: Colors.white, size: 20),
+                      const SizedBox(width: 10),
+                      Row(
+                        children: [
+                          GestureDetector(onTap: () { Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false); }, child: Text('Home', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5))),
+                          Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                          GestureDetector(onTap: () { Navigator.pushNamed(context, '/pricing'); }, child: Text('Pricing', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5))),
+                          Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                          GestureDetector(onTap: () { Navigator.pushNamed(context, '/features'); }, child: Text('Features', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5))),
+                          Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                          GestureDetector(onTap: () { Navigator.pushNamed(context, '/terms'); }, child: Text('T&C', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5))),
+                          Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                          GestureDetector(onTap: () { Navigator.pushNamed(context, '/contact'); }, child: Text('Contact', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5))),
+                          Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                          GestureDetector(onTap: () { Navigator.pushNamed(context, '/faq'); }, child: Text('FAQ', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5))),
+                        ],
                       ),
-                    ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamed(context, '/features');
-                      },
-                      child: const Text(
-                        'Features',
-                        style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
-                      ),
-                    ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamed(context, '/terms');
-                      },
-                      child: const Text(
-                        'T&C',
-                        style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
-                      ),
-                    ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamed(context, '/contact');
-                      },
-                      child: const Text(
-                        'Contact',
-                        style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
-                      ),
-                    ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamed(context, '/faq');
-                      },
-                      child: const Text(
-                        'FAQ',
-                        style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
-                      ),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                GestureDetector(
-                  onTap: () {
-                    final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
-                    openUrl(whatsappUrl);
-                  },
-                  child: const Text(
-                    'Request Quote (via Whatsapp)',
-                    style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
+                      const Spacer(),
+                      GestureDetector(onTap: () { final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0'; openUrl(whatsappUrl); }, child: Text('Request Quote (via Whatsapp)', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5))),
+                      const Spacer(),
+                      const Icon(Icons.email, color: Colors.white, size: 20), const SizedBox(width: 10), Text('runmlgrun@gmail.com', style: TextStyle(color: Colors.white, fontSize: 14)), const SizedBox(width: 20),
+                    ],
                   ),
-                ),
-                const Spacer(),
-                const Icon(Icons.email, color: Colors.white, size: 20),
-                const SizedBox(width: 10),
-                const Text(
-                  'runmlgrun@gmail.com',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(width: 20),
-              ],
-            ),
-          ),
+          )),
         ],
       ),
     );
   }
 
-  Widget _buildNavItem(String text, bool isActive, {VoidCallback? onTap}) {
+  Widget _buildNavItem(BuildContext context, String text, bool isActive, {VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
+        padding: EdgeInsets.symmetric(
+          horizontal: isMobile(context) ? 12 : 20,
+          vertical: isMobile(context) ? 15 : 25,
+        ),
         margin: const EdgeInsets.symmetric(horizontal: 5),
         decoration: BoxDecoration(
           color: isActive ? Colors.white.withOpacity(0.15) : Colors.transparent,
@@ -2330,7 +2651,7 @@ class ContactPage extends StatelessWidget {
           text,
           style: TextStyle(
             color: Colors.white,
-            fontSize: 16,
+            fontSize: isMobile(context) ? 13 : 16,
             fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
           ),
         ),
@@ -2338,40 +2659,47 @@ class ContactPage extends StatelessWidget {
     );
   }
 
-  Widget _buildModernButton(String text, VoidCallback onPressed) {
+  Widget _buildModernButton(BuildContext context, String text, VoidCallback onPressed) {
     return Container(
+      width: MediaQuery.of(context).size.width < 768 ? 320 : 240,
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.of(context).size.width < 768 ? 320 : 240,
+        minWidth: 220,
+      ),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFFE91E63), Color(0xFFC2185B)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(40),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFE91E63).withOpacity(0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
+            color: const Color(0xFFE91E63).withOpacity(0.35),
+            blurRadius: 16,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: Text(
-          text,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 1,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(40),
+          onTap: onPressed,
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: MediaQuery.of(context).size.width < 768 ? 24 : 44,
+              vertical: 18,
+            ),
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+                letterSpacing: 0.4,
+              ),
+            ),
           ),
         ),
       ),
@@ -2433,39 +2761,58 @@ class FAQPage extends StatelessWidget {
                 ),
                 const Spacer(),
                 // Navigation
-                Row(
-                  children: [
-                    _buildNavItem('Home', false, onTap: () {
-                      Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
-                    }),
-                    _buildNavItem('Race Results', false, onTap: () {
-                      Navigator.pushNamed(context, '/results');
-                    }),
-                    _buildNavItem('Pricing', false, onTap: () {
-                      Navigator.pushNamed(context, '/pricing');
-                    }),
-                    _buildNavItem('Features', false, onTap: () {
-                      Navigator.pushNamed(context, '/features');
-                    }),
-                    _buildNavItem('Contact', false, onTap: () {
-                      Navigator.pushNamed(context, '/contact');
-                    }),
-                    _buildNavItem('FAQ', true),
-                    const SizedBox(width: 20),
-                    GestureDetector(
-                      onTap: () => navigateToSearchPage(context),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
+                isMobile(context)
+                  ? Row(
+                      children: [
+                        _buildMobileMenuButton(context),
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          onTap: () => navigateToSearchPage(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Icon(Icons.search, color: Colors.white, size: 18),
+                          ),
                         ),
-                        child: const Icon(Icons.search, color: Colors.white, size: 20),
-                      ),
+                        const SizedBox(width: 6),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        _buildNavItem(context, 'Home', false, onTap: () {
+                          Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+                        }),
+                        _buildNavItem(context, 'Race Results', false, onTap: () {
+                          Navigator.pushNamed(context, '/results');
+                        }),
+                        _buildNavItem(context, 'Pricing', false, onTap: () {
+                          Navigator.pushNamed(context, '/pricing');
+                        }),
+                        _buildNavItem(context, 'Features', false, onTap: () {
+                          Navigator.pushNamed(context, '/features');
+                        }),
+                        _buildNavItem(context, 'Contact', false, onTap: () {
+                          Navigator.pushNamed(context, '/contact');
+                        }),
+                        _buildNavItem(context, 'FAQ', true),
+                        const SizedBox(width: 20),
+                        GestureDetector(
+                          onTap: () => navigateToSearchPage(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.search, color: Colors.white, size: 20),
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                      ],
                     ),
-                    const SizedBox(width: 20),
-                  ],
-                ),
               ],
             ),
           ),
@@ -2500,9 +2847,9 @@ class FAQPage extends StatelessWidget {
                     'Frequently Asked Questions (FAQ)',
                     style: TextStyle(
                       fontSize: 18,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                       color: const Color(0xFFE91E63),
-                      letterSpacing: 1,
+                      letterSpacing: 0.4,
                     ),
                   ),
                 ],
@@ -2518,7 +2865,7 @@ class FAQPage extends StatelessWidget {
                 child: Column(
                   children: [
                     // Introduction
-                    const Text(
+                    Text(
                       'We understand that planning a race event comes with many questions. Below are some of the most common inquiries about our race timing system and services. If you don\'t find the answer you\'re looking for, feel free to reach out!',
                       textAlign: TextAlign.center,
                       style: TextStyle(
@@ -2572,6 +2919,7 @@ class FAQPage extends StatelessWidget {
                     const SizedBox(height: 40),
                     // Request Quote Button
                     _buildModernButton(
+                      context,
                       'Request Quote',
                       () {
                         final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
@@ -2579,7 +2927,7 @@ class FAQPage extends StatelessWidget {
                       },
                     ),
                     const SizedBox(height: 20),
-                    const Text(
+                    Text(
                       'Still have questions? Don\'t hesitate to contact us, and we\'ll be happy to assist you!',
                       textAlign: TextAlign.center,
                       style: TextStyle(
@@ -2593,11 +2941,33 @@ class FAQPage extends StatelessWidget {
               ),
             ),
           ),
-          // Footer
+          // Footer: desktop original, mobile flexible
           Container(
+            width: double.infinity,
             height: 60,
             color: const Color(0xFF424242),
-            child: Row(
+            child: isMobile(context) ? Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  const Icon(Icons.info_outline, color: Colors.white, size: 18),
+                  _footerLink(context, 'Home', () { Navigator.pushNamedAndRemoveUntil(context, '/', (r) => false); }),
+                  _sep(), _footerLink(context, 'Pricing', () { Navigator.pushNamed(context, '/pricing'); }),
+                  _sep(), _footerLink(context, 'Features', () { Navigator.pushNamed(context, '/features'); }),
+                  _sep(), _footerLink(context, 'T&C', () { Navigator.pushNamed(context, '/terms'); }),
+                  _sep(), _footerLink(context, 'Contact', () { Navigator.pushNamed(context, '/contact'); }),
+                  _sep(), _footerLink(context, 'FAQ', () { Navigator.pushNamed(context, '/faq'); }),
+                  const SizedBox(width: 10),
+                  _footerLink(context, 'Request Quote (via Whatsapp)', () { final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0'; openUrl(whatsappUrl); }),
+                  const SizedBox(width: 10), const Icon(Icons.email, color: Colors.white, size: 18), const SizedBox(width: 6), const Text('runmlgrun@gmail.com', style: TextStyle(color: Colors.white, fontSize: 12)),
+                ],
+              ),
+            ) : Row(
               children: [
                 const SizedBox(width: 20),
                 const Icon(Icons.info_outline, color: Colors.white, size: 20),
@@ -2608,57 +2978,57 @@ class FAQPage extends StatelessWidget {
                       onTap: () {
                         Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
                       },
-                      child: const Text(
+                      child: Text(
                         'Home',
                         style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                       ),
                     ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
                     GestureDetector(
                       onTap: () {
                         Navigator.pushNamed(context, '/pricing');
                       },
-                      child: const Text(
+                      child: Text(
                         'Pricing',
                         style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                       ),
                     ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
                     GestureDetector(
                       onTap: () {
                         Navigator.pushNamed(context, '/features');
                       },
-                      child: const Text(
+                      child: Text(
                         'Features',
                         style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                       ),
                     ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
                     GestureDetector(
                       onTap: () {
                         Navigator.pushNamed(context, '/terms');
                       },
-                      child: const Text(
+                      child: Text(
                         'T&C',
                         style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                       ),
                     ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
                     GestureDetector(
                       onTap: () {
                         Navigator.pushNamed(context, '/contact');
                       },
-                      child: const Text(
+                      child: Text(
                         'Contact',
                         style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                       ),
                     ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
                     GestureDetector(
                       onTap: () {
                         Navigator.pushNamed(context, '/faq');
                       },
-                      child: const Text(
+                      child: Text(
                         'FAQ',
                         style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                       ),
@@ -2671,7 +3041,7 @@ class FAQPage extends StatelessWidget {
                     final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
                     openUrl(whatsappUrl);
                   },
-                  child: const Text(
+                  child: Text(
                     'Request Quote (via Whatsapp)',
                     style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                   ),
@@ -2679,7 +3049,7 @@ class FAQPage extends StatelessWidget {
                 const Spacer(),
                 const Icon(Icons.email, color: Colors.white, size: 20),
                 const SizedBox(width: 10),
-                const Text(
+                Text(
                   'runmlgrun@gmail.com',
                   style: TextStyle(
                     color: Colors.white,
@@ -2695,11 +3065,14 @@ class FAQPage extends StatelessWidget {
     );
   }
 
-  Widget _buildNavItem(String text, bool isActive, {VoidCallback? onTap}) {
+  Widget _buildNavItem(BuildContext context, String text, bool isActive, {VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
+        padding: EdgeInsets.symmetric(
+          horizontal: isMobile(context) ? 12 : 20,
+          vertical: isMobile(context) ? 15 : 25,
+        ),
         margin: const EdgeInsets.symmetric(horizontal: 5),
         decoration: BoxDecoration(
           color: isActive ? Colors.white.withOpacity(0.15) : Colors.transparent,
@@ -2709,7 +3082,7 @@ class FAQPage extends StatelessWidget {
           text,
           style: TextStyle(
             color: Colors.white,
-            fontSize: 16,
+            fontSize: isMobile(context) ? 13 : 16,
             fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
           ),
         ),
@@ -2739,7 +3112,7 @@ class FAQPage extends StatelessWidget {
         children: [
           Text(
             question,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
               color: Color(0xFF2C3E50),
@@ -2766,40 +3139,47 @@ class FAQPage extends StatelessWidget {
     );
   }
 
-  Widget _buildModernButton(String text, VoidCallback onPressed) {
+  Widget _buildModernButton(BuildContext context, String text, VoidCallback onPressed) {
     return Container(
+      width: MediaQuery.of(context).size.width < 768 ? 320 : 240,
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.of(context).size.width < 768 ? 320 : 240,
+        minWidth: 220,
+      ),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFFE91E63), Color(0xFFC2185B)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(40),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFE91E63).withOpacity(0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
+            color: const Color(0xFFE91E63).withOpacity(0.35),
+            blurRadius: 16,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: Text(
-          text,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 1,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(40),
+          onTap: onPressed,
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: MediaQuery.of(context).size.width < 768 ? 24 : 44,
+              vertical: 18,
+            ),
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+                letterSpacing: 0.4,
+              ),
+            ),
           ),
         ),
       ),
@@ -2884,7 +3264,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
       {
         'title': 'Contact – Request Quote',
         'route': '/contact',
-        'snippet': 'Contact info and WhatsApp “Request Quote” button.',
+        'snippet': 'Contact info and WhatsApp "Request Quote" button.',
         'lastModified': 'Jul 28, 2025',
       },
       {
@@ -3008,41 +3388,60 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                 ),
                 const Spacer(),
                 // Navigation
-                Row(
-                  children: [
-                    _buildNavItem('Home', false, onTap: () {
-                      Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
-                    }),
-                    _buildNavItem('Race Results', false, onTap: () {
-                      Navigator.pushNamed(context, '/results');
-                    }),
-                    _buildNavItem('Pricing', false, onTap: () {
-                      Navigator.pushNamed(context, '/pricing');
-                    }),
-                    _buildNavItem('Features', false, onTap: () {
-                      Navigator.pushNamed(context, '/features');
-                    }),
-                    _buildNavItem('Contact', false, onTap: () {
-                      Navigator.pushNamed(context, '/contact');
-                    }),
-                    _buildNavItem('FAQ', false, onTap: () {
-                      Navigator.pushNamed(context, '/faq');
-                    }),
-                    const SizedBox(width: 20),
-                    GestureDetector(
-                      onTap: () => navigateToSearchPage(context),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
+                isMobile(context)
+                  ? Row(
+                      children: [
+                        _buildMobileMenuButton(context),
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          onTap: () => navigateToSearchPage(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Icon(Icons.search, color: Colors.white, size: 18),
+                          ),
                         ),
-                        child: const Icon(Icons.search, color: Colors.white, size: 20),
-                      ),
+                        const SizedBox(width: 6),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        _buildNavItem(context, 'Home', false, onTap: () {
+                          Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+                        }),
+                        _buildNavItem(context, 'Race Results', false, onTap: () {
+                          Navigator.pushNamed(context, '/results');
+                        }),
+                        _buildNavItem(context, 'Pricing', false, onTap: () {
+                          Navigator.pushNamed(context, '/pricing');
+                        }),
+                        _buildNavItem(context, 'Features', false, onTap: () {
+                          Navigator.pushNamed(context, '/features');
+                        }),
+                        _buildNavItem(context, 'Contact', false, onTap: () {
+                          Navigator.pushNamed(context, '/contact');
+                        }),
+                        _buildNavItem(context, 'FAQ', false, onTap: () {
+                          Navigator.pushNamed(context, '/faq');
+                        }),
+                        const SizedBox(width: 20),
+                        GestureDetector(
+                          onTap: () => navigateToSearchPage(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.search, color: Colors.white, size: 20),
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                      ],
                     ),
-                    const SizedBox(width: 20),
-                  ],
-                ),
               ],
             ),
           ),
@@ -3296,32 +3695,32 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                   children: [
                     GestureDetector(
                       onTap: () { Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false); },
-                      child: const Text('Home', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5)),
+                      child: Text('Home', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5)),
                     ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
                     GestureDetector(
                       onTap: () { Navigator.pushNamed(context, '/pricing'); },
-                      child: const Text('Pricing', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5)),
+                      child: Text('Pricing', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5)),
                     ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
                     GestureDetector(
                       onTap: () { Navigator.pushNamed(context, '/features'); },
-                      child: const Text('Features', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5)),
+                      child: Text('Features', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5)),
                     ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
                     GestureDetector(
                       onTap: () { Navigator.pushNamed(context, '/terms'); },
-                      child: const Text('T&C', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5)),
+                      child: Text('T&C', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5)),
                     ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
                     GestureDetector(
                       onTap: () { Navigator.pushNamed(context, '/contact'); },
-                      child: const Text('Contact', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5)),
+                      child: Text('Contact', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5)),
                     ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
                     GestureDetector(
                       onTap: () { Navigator.pushNamed(context, '/faq'); },
-                      child: const Text('FAQ', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5)),
+                      child: Text('FAQ', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5)),
                     ),
                   ],
                 ),
@@ -3331,7 +3730,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                     final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
                     openUrl(whatsappUrl);
                   },
-                  child: const Text(
+                  child: Text(
                     'Request Quote (via Whatsapp)',
                     style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                   ),
@@ -3339,7 +3738,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                 const Spacer(),
                 const Icon(Icons.email, color: Colors.white, size: 20),
                 const SizedBox(width: 10),
-                const Text(
+                Text(
                   'runmlgrun@gmail.com',
                   style: TextStyle(color: Colors.white, fontSize: 14),
                 ),
@@ -3353,20 +3752,23 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
   }
 
   // Helper function for navigation items
-  Widget _buildNavItem(String text, bool isActive, {VoidCallback? onTap}) {
+  Widget _buildNavItem(BuildContext context, String text, bool isActive, {VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
+        padding: EdgeInsets.symmetric(
+          horizontal: isMobile(context) ? 12 : 20,
+          vertical: isMobile(context) ? 15 : 25,
+        ),
         decoration: BoxDecoration(
           color: isActive ? Colors.white.withOpacity(0.15) : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(
           text,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.white,
-            fontSize: 16,
+            fontSize: isMobile(context) ? 13 : 16,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -3399,7 +3801,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
           children: [
             Text(
               title,
-              style: const TextStyle(
+                style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: Color(0xFF2C3E50),
@@ -3441,49 +3843,100 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF2C3E50),
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE91E63).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(40),
+                border: Border.all(
+                  color: const Color(0xFFE91E63).withOpacity(0.3),
+                  width: 2,
+                ),
+              ),
+              child: const Icon(
+                Icons.directions_run,
+                size: 40,
+                color: Color(0xFFE91E63),
               ),
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                const Icon(Icons.calendar_today, size: 16, color: Color(0xFF7F8C8D)),
-                const SizedBox(width: 8),
-                Text(
-                  date,
-                  style: const TextStyle(fontSize: 14, color: Color(0xFF7F8C8D)),
-                ),
-              ],
+            const SizedBox(width: 30),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF2C3E50),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Icons.calendar_today, size: 16, color: Color(0xFF7F8C8D)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          date,
+                          softWrap: true,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Color(0xFF7F8C8D),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.flag, size: 16, color: Color(0xFF7F8C8D)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          type,
+                          softWrap: true,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Color(0xFF7F8C8D),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on, size: 16, color: Color(0xFF7F8C8D)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          location,
+                          softWrap: true,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Color(0xFF7F8C8D),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.category, size: 16, color: Color(0xFF7F8C8D)),
-                const SizedBox(width: 8),
-                Text(
-                  type,
-                  style: const TextStyle(fontSize: 14, color: Color(0xFF7F8C8D)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.location_on, size: 16, color: Color(0xFF7F8C8D)),
-                const SizedBox(width: 8),
-                Text(
-                  location,
-                  style: const TextStyle(fontSize: 14, color: Color(0xFF7F8C8D)),
-                ),
-              ],
+            const Icon(
+              Icons.arrow_forward_ios,
+              color: Color(0xFFE91E63),
+              size: 20,
             ),
           ],
         ),
@@ -3517,7 +3970,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
               Expanded(
                 child: Text(
                   name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: Color(0xFF2C3E50),
@@ -3536,7 +3989,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                   rank,
                   style: TextStyle(
                     fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                     color: rank.contains('1st') || rank.contains('2nd') || rank.contains('3rd') 
                         ? Colors.white : const Color(0xFF2C3E50),
                   ),
@@ -3652,7 +4105,7 @@ class RaceResultsPage extends StatelessWidget {
       {
         'title': 'FAQ – Pricing & Packages',
         'route': '/faq',
-        'snippet': 'Questions about pricing, custom quotes, and what’s included per package.',
+        'snippet': 'Questions about pricing, custom quotes, and what\'s included per package.',
         'lastModified': 'Jul 28, 2025',
       },
       {
@@ -3736,39 +4189,58 @@ class RaceResultsPage extends StatelessWidget {
                 ),
                 const Spacer(),
                 // Navigation
-                Row(
-                  children: [
-                    _buildNavItem('Home', false, onTap: () {
-                      Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
-                    }),
-                    _buildNavItem('Race Results', true),
-                    _buildNavItem('Pricing', false, onTap: () {
-                      Navigator.pushNamed(context, '/pricing');
-                    }),
-                    _buildNavItem('Features', false, onTap: () {
-                      Navigator.pushNamed(context, '/features');
-                    }),
-                    _buildNavItem('Contact', false, onTap: () {
-                      Navigator.pushNamed(context, '/contact');
-                    }),
-                    _buildNavItem('FAQ', false, onTap: () {
-                      Navigator.pushNamed(context, '/faq');
-                    }),
-                    const SizedBox(width: 20),
-                    GestureDetector(
-                      onTap: () => navigateToSearchPage(context),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
+                isMobile(context)
+                  ? Row(
+                      children: [
+                        _buildMobileMenuButton(context),
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          onTap: () => navigateToSearchPage(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Icon(Icons.search, color: Colors.white, size: 18),
+                          ),
                         ),
-                        child: const Icon(Icons.search, color: Colors.white, size: 20),
-                      ),
+                        const SizedBox(width: 6),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        _buildNavItem(context, 'Home', false, onTap: () {
+                          Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+                        }),
+                        _buildNavItem(context, 'Race Results', true),
+                        _buildNavItem(context, 'Pricing', false, onTap: () {
+                          Navigator.pushNamed(context, '/pricing');
+                        }),
+                        _buildNavItem(context, 'Features', false, onTap: () {
+                          Navigator.pushNamed(context, '/features');
+                        }),
+                        _buildNavItem(context, 'Contact', false, onTap: () {
+                          Navigator.pushNamed(context, '/contact');
+                        }),
+                        _buildNavItem(context, 'FAQ', false, onTap: () {
+                          Navigator.pushNamed(context, '/faq');
+                        }),
+                        const SizedBox(width: 20),
+                        GestureDetector(
+                          onTap: () => navigateToSearchPage(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.search, color: Colors.white, size: 20),
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                      ],
                     ),
-                    const SizedBox(width: 20),
-                  ],
-                ),
               ],
             ),
           ),
@@ -3826,17 +4298,17 @@ class RaceResultsPage extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Results from this site',
                           style: TextStyle(
                             fontSize: 16,
                             color: Color(0xFF7F8C8D),
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                         const SizedBox(height: 14),
                         if (filteredPages.isEmpty)
-                          const Text(
+                          Text(
                             'No pages found.',
                             style: TextStyle(fontSize: 14, color: Color(0xFF99A3A4)),
                           )
@@ -3857,17 +4329,17 @@ class RaceResultsPage extends StatelessWidget {
                     padding: const EdgeInsets.all(60),
                     child: Column(
                       children: [
-                        const Text(
+                        Text(
                           'Past Events',
                           style: TextStyle(
                             fontSize: 36,
                             fontWeight: FontWeight.w800,
                             color: Color(0xFF2C3E50),
-                            letterSpacing: 1,
+                            letterSpacing: 0.4,
                           ),
                         ),
                         const SizedBox(height: 15),
-                        const Text(
+                        Text(
                           'Click on any event to view race results',
                           style: TextStyle(
                             fontSize: 18,
@@ -3882,12 +4354,12 @@ class RaceResultsPage extends StatelessWidget {
                             if (filteredEvents.isEmpty)
                               Container(
                                 padding: const EdgeInsets.symmetric(vertical: 20),
-                                child: const Text(
+                                child: Text(
                                   'No events found for your search.',
                                   style: TextStyle(
                                     fontSize: 18,
                                     color: Color(0xFF7F8C8D),
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                               )
@@ -3898,9 +4370,7 @@ class RaceResultsPage extends StatelessWidget {
                                   event['date']!,
                                   event['category']!,
                                   event['location']!,
-                                  () {
-                                    Navigator.pushNamed(context, '/event-detail');
-                                  },
+                                  () { Navigator.pushNamed(context, '/event-detail'); },
                                 ),
                                 const SizedBox(height: 20),
                               ]),
@@ -3913,11 +4383,33 @@ class RaceResultsPage extends StatelessWidget {
               ),
             ),
           ),
-          // Footer
+          // Footer: desktop original, mobile flexible
           Container(
+            width: double.infinity,
             height: 60,
             color: const Color(0xFF424242),
-            child: Row(
+            child: isMobile(context) ? Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  const Icon(Icons.info_outline, color: Colors.white, size: 18),
+                  _footerLink(context, 'Home', () { Navigator.pushNamedAndRemoveUntil(context, '/', (r) => false); }),
+                  _sep(), _footerLink(context, 'Pricing', () { Navigator.pushNamed(context, '/pricing'); }),
+                  _sep(), _footerLink(context, 'Features', () { Navigator.pushNamed(context, '/features'); }),
+                  _sep(), _footerLink(context, 'T&C', () { Navigator.pushNamed(context, '/terms'); }),
+                  _sep(), _footerLink(context, 'Contact', () { Navigator.pushNamed(context, '/contact'); }),
+                  _sep(), _footerLink(context, 'FAQ', () { Navigator.pushNamed(context, '/faq'); }),
+                  const SizedBox(width: 10),
+                  _footerLink(context, 'Request Quote (via Whatsapp)', () { final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0'; openUrl(whatsappUrl); }),
+                  const SizedBox(width: 10), const Icon(Icons.email, color: Colors.white, size: 18), const SizedBox(width: 6), const Text('runmlgrun@gmail.com', style: TextStyle(color: Colors.white, fontSize: 12)),
+                ],
+              ),
+            ) : Row(
               children: [
                 const SizedBox(width: 20),
                 const Icon(Icons.info_outline, color: Colors.white, size: 20),
@@ -3928,57 +4420,57 @@ class RaceResultsPage extends StatelessWidget {
                       onTap: () {
                         Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
                       },
-                      child: const Text(
+                      child: Text(
                         'Home',
                         style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                       ),
                     ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
                     GestureDetector(
                       onTap: () {
                         Navigator.pushNamed(context, '/pricing');
                       },
-                      child: const Text(
+                      child: Text(
                         'Pricing',
                         style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                       ),
                     ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
                     GestureDetector(
                       onTap: () {
                         Navigator.pushNamed(context, '/features');
                       },
-                      child: const Text(
+                      child: Text(
                         'Features',
                         style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                       ),
                     ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
                     GestureDetector(
                       onTap: () {
                         Navigator.pushNamed(context, '/terms');
                       },
-                      child: const Text(
+                      child: Text(
                         'T&C',
                         style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                       ),
                     ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
                     GestureDetector(
                       onTap: () {
                         Navigator.pushNamed(context, '/contact');
                       },
-                      child: const Text(
+                      child: Text(
                         'Contact',
                         style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                       ),
                     ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
                     GestureDetector(
                       onTap: () {
                         Navigator.pushNamed(context, '/faq');
                       },
-                      child: const Text(
+                      child: Text(
                         'FAQ',
                         style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                       ),
@@ -3991,7 +4483,7 @@ class RaceResultsPage extends StatelessWidget {
                     final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
                     openUrl(whatsappUrl);
                   },
-                  child: const Text(
+                  child: Text(
                     'Request Quote (via Whatsapp)',
                     style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                   ),
@@ -3999,7 +4491,7 @@ class RaceResultsPage extends StatelessWidget {
                 const Spacer(),
                 const Icon(Icons.email, color: Colors.white, size: 20),
                 const SizedBox(width: 10),
-                const Text(
+                Text(
                   'runmlgrun@gmail.com',
                   style: TextStyle(color: Colors.white, fontSize: 14),
                 ),
@@ -4016,11 +4508,83 @@ class RaceResultsPage extends StatelessWidget {
   Widget _buildFooter(BuildContext context) {
     const String reportUrl = 'https://reportingwidget.google.com/u/0/widget/35?cid=https://sites.google.com/view/lariterus-timing-system&hl='; // [Google report widget]
     return Container(
-      height: 60,
       color: const Color(0xFF424242),
-      child: Row(
-        children: [
-          const SizedBox(width: 20),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile(context) ? 16 : 20,
+        vertical: isMobile(context) ? 16 : 12,
+      ),
+      child: isMobile(context) 
+        ? Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Info icon and main navigation links (wrapped)
+              Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: GestureDetector(
+                      onTap: () => openUrl(reportUrl),
+                      child: const Icon(Icons.info_outline, color: Colors.white, size: 18),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+                    },
+                    child: Text('Home', style: TextStyle(color: Colors.white, fontSize: 12, decoration: TextDecoration.underline, decorationThickness: 1.5)),
+                  ),
+                  Text('|', style: TextStyle(color: Colors.white, fontSize: 12)),
+                  GestureDetector(
+                    onTap: () => Navigator.pushNamed(context, '/pricing'),
+                    child: Text('Pricing', style: TextStyle(color: Colors.white, fontSize: 12, decoration: TextDecoration.underline, decorationThickness: 1.5)),
+                  ),
+                  Text('|', style: TextStyle(color: Colors.white, fontSize: 12)),
+                  GestureDetector(
+                    onTap: () => Navigator.pushNamed(context, '/features'),
+                    child: Text('Features', style: TextStyle(color: Colors.white, fontSize: 12, decoration: TextDecoration.underline, decorationThickness: 1.5)),
+                  ),
+                  Text('|', style: TextStyle(color: Colors.white, fontSize: 12)),
+                  GestureDetector(
+                    onTap: () => Navigator.pushNamed(context, '/terms'),
+                    child: Text('T&C', style: TextStyle(color: Colors.white, fontSize: 12, decoration: TextDecoration.underline, decorationThickness: 1.5)),
+                  ),
+                  Text('|', style: TextStyle(color: Colors.white, fontSize: 12)),
+                  GestureDetector(
+                    onTap: () => Navigator.pushNamed(context, '/contact'),
+                    child: Text('Contact', style: TextStyle(color: Colors.white, fontSize: 12, decoration: TextDecoration.underline, decorationThickness: 1.5)),
+                  ),
+                  Text('|', style: TextStyle(color: Colors.white, fontSize: 12)),
+                  GestureDetector(
+                    onTap: () => Navigator.pushNamed(context, '/faq'),
+                    child: Text('FAQ', style: TextStyle(color: Colors.white, fontSize: 12, decoration: TextDecoration.underline, decorationThickness: 1.5)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Additional info (wrapped)
+              Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  Text('Page updated Jul 28, 2025', style: TextStyle(color: Colors.white, fontSize: 11)),
+                  Text('|', style: TextStyle(color: Colors.white70, fontSize: 11)),
+                  GestureDetector(
+                    onTap: () => openUrl('https://workspace.google.com/'),
+                    child: Text('Google Workspace', style: TextStyle(color: Colors.white, fontSize: 11, decoration: TextDecoration.underline)),
+                  ),
+                ],
+              ),
+            ],
+          )
+        : Row(
+            children: [
+              const SizedBox(width: 20),
           // Make the info icon clickable -> open report widget
           MouseRegion(
             cursor: SystemMouseCursors.click,
@@ -4037,32 +4601,32 @@ class RaceResultsPage extends StatelessWidget {
                 onTap: () {
                   Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
                 },
-                child: const Text('Home', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5)),
+                child: Text('Home', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5)),
               ),
-              const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+              Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
               GestureDetector(
                 onTap: () => Navigator.pushNamed(context, '/pricing'),
-                child: const Text('Pricing', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5)),
+                child: Text('Pricing', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5)),
               ),
-              const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+              Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
               GestureDetector(
                 onTap: () => Navigator.pushNamed(context, '/features'),
-                child: const Text('Features', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5)),
+                child: Text('Features', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5)),
               ),
-              const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+              Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
               GestureDetector(
                 onTap: () => Navigator.pushNamed(context, '/terms'),
-                child: const Text('T&C', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5)),
+                child: Text('T&C', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5)),
               ),
-              const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+              Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
               GestureDetector(
                 onTap: () => Navigator.pushNamed(context, '/contact'),
-                child: const Text('Contact', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5)),
+                child: Text('Contact', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5)),
               ),
-              const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+              Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
               GestureDetector(
                 onTap: () => Navigator.pushNamed(context, '/faq'),
-                child: const Text('FAQ', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5)),
+                child: Text('FAQ', style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5)),
               ),
             ],
           ),
@@ -4070,11 +4634,11 @@ class RaceResultsPage extends StatelessWidget {
           // Right info: updated | Google Workspace | Report
           Row(
             children: [
-              const Text('Page updated Jul 28, 2025', style: TextStyle(color: Colors.white, fontSize: 13)),
-              const Text('  |  ', style: TextStyle(color: Colors.white70)),
+              Text('Page updated Jul 28, 2025', style: TextStyle(color: Colors.white, fontSize: 13)),
+              Text('  |  ', style: TextStyle(color: Colors.white70)),
               GestureDetector(
                 onTap: () => openUrl('https://workspace.google.com/'),
-                child: const Text('Google Workspace', style: TextStyle(color: Colors.white, fontSize: 13, decoration: TextDecoration.underline)),
+                child: Text('Google Workspace', style: TextStyle(color: Colors.white, fontSize: 13, decoration: TextDecoration.underline)),
               ),
               const SizedBox(width: 14),
               Container(
@@ -4087,7 +4651,7 @@ class RaceResultsPage extends StatelessWidget {
                 child: Row(
                   children: [
                     const SizedBox(width: 8),
-                    const Text('Report: ', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                    Text('Report: ', style: TextStyle(color: Colors.white70, fontSize: 13)),
                     const SizedBox(width: 6),
                     MouseRegion(
                       cursor: SystemMouseCursors.click,
@@ -4099,7 +4663,7 @@ class RaceResultsPage extends StatelessWidget {
                             color: Colors.white.withOpacity(0.12),
                             borderRadius: BorderRadius.circular(4),
                           ),
-                          child: const Text('Entire site', style: TextStyle(color: Colors.white, fontSize: 12)),
+                          child: Text('Entire site', style: TextStyle(color: Colors.white, fontSize: 12)),
                         ),
                       ),
                     ),
@@ -4114,7 +4678,7 @@ class RaceResultsPage extends StatelessWidget {
                             color: Colors.white.withOpacity(0.12),
                             borderRadius: BorderRadius.circular(4),
                           ),
-                          child: const Text('Current page', style: TextStyle(color: Colors.white, fontSize: 12)),
+                          child: Text('Current page', style: TextStyle(color: Colors.white, fontSize: 12)),
                         ),
                       ),
                     ),
@@ -4130,11 +4694,14 @@ class RaceResultsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildNavItem(String text, bool isActive, {VoidCallback? onTap}) {
+  Widget _buildNavItem(BuildContext context, String text, bool isActive, {VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
+        padding: EdgeInsets.symmetric(
+          horizontal: isMobile(context) ? 12 : 20,
+          vertical: isMobile(context) ? 15 : 25,
+        ),
         decoration: BoxDecoration(
           color: isActive ? Colors.white.withOpacity(0.15) : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
@@ -4144,7 +4711,7 @@ class RaceResultsPage extends StatelessWidget {
           style: TextStyle(
             color: Colors.white,
             fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-            fontSize: 15,
+            fontSize: isMobile(context) ? 13 : 15,
             letterSpacing: 0.5,
           ),
         ),
@@ -4207,12 +4774,15 @@ class RaceResultsPage extends StatelessWidget {
                     children: [
                       const Icon(Icons.calendar_today, size: 16, color: Color(0xFF7F8C8D)),
                       const SizedBox(width: 8),
-                      Text(
-                        date,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: Color(0xFF7F8C8D),
-                          fontWeight: FontWeight.w500,
+                      Expanded(
+                        child: Text(
+                          date,
+                          softWrap: true,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Color(0xFF7F8C8D),
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ],
@@ -4222,12 +4792,15 @@ class RaceResultsPage extends StatelessWidget {
                     children: [
                       const Icon(Icons.flag, size: 16, color: Color(0xFF7F8C8D)),
                       const SizedBox(width: 8),
-                      Text(
-                        type,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: Color(0xFF7F8C8D),
-                          fontWeight: FontWeight.w500,
+                      Expanded(
+                        child: Text(
+                          type,
+                          softWrap: true,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Color(0xFF7F8C8D),
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ],
@@ -4237,12 +4810,15 @@ class RaceResultsPage extends StatelessWidget {
                     children: [
                       const Icon(Icons.location_on, size: 16, color: Color(0xFF7F8C8D)),
                       const SizedBox(width: 8),
-                      Text(
-                        location,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: Color(0xFF7F8C8D),
-                          fontWeight: FontWeight.w500,
+                      Expanded(
+                        child: Text(
+                          location,
+                          softWrap: true,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Color(0xFF7F8C8D),
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ],
@@ -4286,7 +4862,7 @@ class RaceResultsPage extends StatelessWidget {
           children: [
             Text(
               title,
-              style: const TextStyle(
+                style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: Color(0xFF2C3E50),
@@ -4310,6 +4886,96 @@ class RaceResultsPage extends StatelessWidget {
     );
   }
 }
+
+// Widget: show footer only when user reaches bottom; hide when scrolling up
+class RevealOnBottom extends StatefulWidget {
+  final Widget child;
+  const RevealOnBottom({super.key, required this.child});
+
+  @override
+  State<RevealOnBottom> createState() => _RevealOnBottomState();
+}
+
+class _RevealOnBottomState extends State<RevealOnBottom> {
+  ScrollController? _controller;
+  double _lastPixels = 0.0;
+  bool _visible = false; // hidden by default; shown near bottom
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _attachToPrimaryController();
+  }
+
+  void _attachToPrimaryController() {
+    final ctrl = PrimaryScrollController.maybeOf(context);
+    if (ctrl == _controller) return;
+    _controller?.removeListener(_onScroll);
+    _controller = ctrl;
+    _controller?.addListener(_onScroll);
+    // Evaluate initial position
+    _onScroll();
+  }
+
+  void _onScroll() {
+    final c = _controller;
+    if (c == null || !c.hasClients) {
+      // No scroll controller → always show footer
+      if (!_visible) setState(() => _visible = true);
+      return;
+    }
+    final pos = c.position;
+    final pixels = pos.pixels;
+    final max = pos.maxScrollExtent;
+    
+    // Debug info
+    print('Scroll: pixels=$pixels, max=$max, atBottom=${(max - pixels) <= 100}');
+    
+    // If not scrollable (max <= 0) keep footer visible
+    final bool notScrollable = max <= 0.0;
+    // More generous threshold
+    final atBottom = notScrollable || (max - pixels) <= 100.0;
+
+    // Show at bottom; hide otherwise
+    final nextVisible = atBottom;
+    if (nextVisible != _visible) {
+      print('Footer visibility changed: $_visible -> $nextVisible');
+      setState(() => _visible = nextVisible);
+    }
+
+    _lastPixels = pixels;
+  }
+
+  @override
+  void dispose() {
+    _controller?.removeListener(_onScroll);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Only animate/hide on mobile; on desktop keep always visible
+    final bool isMobileWidth = MediaQuery.of(context).size.width < 768;
+    if (!isMobileWidth) return widget.child;
+    // Slide the footer off-screen vertically when not visible
+    return AnimatedSlide(
+      duration: const Duration(milliseconds: 180),
+      offset: _visible ? const Offset(0, 0) : const Offset(0, 1),
+      curve: Curves.easeOut,
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 180),
+        opacity: _visible ? 1.0 : 0.0,
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+Widget _sep() => const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 12));
+Widget _footerLink(BuildContext context, String text, VoidCallback onTap) => GestureDetector(
+  onTap: onTap,
+  child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 12, decoration: TextDecoration.underline, decorationThickness: 1.5)),
+);
 
 class EventDetailPage extends StatefulWidget {
   const EventDetailPage({super.key});
@@ -4532,39 +5198,58 @@ class _EventDetailPageState extends State<EventDetailPage> {
                 ),
                 const Spacer(),
                 // Navigation
-                Row(
-                  children: [
-                    _buildNavItem('Home', false, onTap: () {
-                      Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
-                    }),
-                    _buildNavItem('Race Results', true),
-                    _buildNavItem('Pricing', false, onTap: () {
-                      Navigator.pushNamed(context, '/pricing');
-                    }),
-                    _buildNavItem('Features', false, onTap: () {
-                      Navigator.pushNamed(context, '/features');
-                    }),
-                    _buildNavItem('Contact', false, onTap: () {
-                      Navigator.pushNamed(context, '/contact');
-                    }),
-                    _buildNavItem('FAQ', false, onTap: () {
-                      Navigator.pushNamed(context, '/faq');
-                    }),
-                    const SizedBox(width: 20),
-                    GestureDetector(
-                      onTap: () => navigateToSearchPage(context),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
+                isMobile(context)
+                  ? Row(
+                      children: [
+                        _buildMobileMenuButton(context),
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          onTap: () => navigateToSearchPage(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Icon(Icons.search, color: Colors.white, size: 18),
+                          ),
                         ),
-                        child: const Icon(Icons.search, color: Colors.white, size: 20),
-                      ),
+                        const SizedBox(width: 6),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        _buildNavItem(context, 'Home', false, onTap: () {
+                          Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+                        }),
+                        _buildNavItem(context, 'Race Results', true),
+                        _buildNavItem(context, 'Pricing', false, onTap: () {
+                          Navigator.pushNamed(context, '/pricing');
+                        }),
+                        _buildNavItem(context, 'Features', false, onTap: () {
+                          Navigator.pushNamed(context, '/features');
+                        }),
+                        _buildNavItem(context, 'Contact', false, onTap: () {
+                          Navigator.pushNamed(context, '/contact');
+                        }),
+                        _buildNavItem(context, 'FAQ', false, onTap: () {
+                          Navigator.pushNamed(context, '/faq');
+                        }),
+                        const SizedBox(width: 20),
+                        GestureDetector(
+                          onTap: () => navigateToSearchPage(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.search, color: Colors.white, size: 20),
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                      ],
                     ),
-                    const SizedBox(width: 20),
-                  ],
-                ),
               ],
             ),
           ),
@@ -4617,7 +5302,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
                   ),
                         ),
                         const SizedBox(height: 20),
-                        const Text(
+                        Text(
                           'AGROMED RUN 2025',
                           style: TextStyle(
                             fontSize: 32,
@@ -4627,7 +5312,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
                           ),
                   ),
                   const SizedBox(height: 8),
-                        const Text(
+                        Text(
                           '5K & 10K Race • March 15, 2025 • Jakarta, Indonesia',
                           style: TextStyle(
                             fontSize: 16,
@@ -4637,7 +5322,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
                           ),
                         ),
                         const SizedBox(height: 20),
-                    const Text(
+                    Text(
                     'RESULTS',
                     style: TextStyle(
                             fontSize: 24,
@@ -4728,10 +5413,10 @@ class _EventDetailPageState extends State<EventDetailPage> {
                           DataColumn(
                             label: SizedBox(
                               width: 60,
-                              child: const Text(
+                              child: Text(
                                 'Rank',
                                 style: TextStyle(
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w700,
                                   color: Color(0xFF2C3E50),
                                   fontSize: 14,
                                 ),
@@ -4744,10 +5429,10 @@ class _EventDetailPageState extends State<EventDetailPage> {
                           DataColumn(
                             label: SizedBox(
                               width: 200,
-                              child: const Text(
+                              child: Text(
                                 'Name',
                                 style: TextStyle(
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w700,
                                   color: Color(0xFF2C3E50),
                                   fontSize: 14,
                                 ),
@@ -4759,10 +5444,10 @@ class _EventDetailPageState extends State<EventDetailPage> {
                           DataColumn(
                             label: SizedBox(
                               width: 80,
-                              child: const Text(
+                              child: Text(
                                 'Bib',
                                 style: TextStyle(
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w700,
                                   color: Color(0xFF2C3E50),
                                   fontSize: 14,
                                 ),
@@ -4778,10 +5463,10 @@ class _EventDetailPageState extends State<EventDetailPage> {
                           DataColumn(
                             label: SizedBox(
                               width: 80,
-                              child: const Text(
+                              child: Text(
                                 'Gender',
                                 style: TextStyle(
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w700,
                                   color: Color(0xFF2C3E50),
                                   fontSize: 14,
                                 ),
@@ -4793,10 +5478,10 @@ class _EventDetailPageState extends State<EventDetailPage> {
                           DataColumn(
                             label: SizedBox(
                               width: 120,
-                              child: const Text(
+                              child: Text(
                                 'Check Point',
                                 style: TextStyle(
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w700,
                                   color: Color(0xFF2C3E50),
                                   fontSize: 14,
                                 ),
@@ -4813,10 +5498,10 @@ class _EventDetailPageState extends State<EventDetailPage> {
                           DataColumn(
                             label: SizedBox(
                               width: 100,
-                              child: const Text(
+                              child: Text(
                                 'Time',
                                 style: TextStyle(
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w700,
                                   color: Color(0xFF2C3E50),
                                   fontSize: 14,
                                 ),
@@ -4828,10 +5513,10 @@ class _EventDetailPageState extends State<EventDetailPage> {
                           DataColumn(
                             label: SizedBox(
                               width: 120,
-                              child: const Text(
+                              child: Text(
                                 'Gender Rank',
                                 style: TextStyle(
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w700,
                                   color: Color(0xFF2C3E50),
                                   fontSize: 14,
                                 ),
@@ -4847,10 +5532,10 @@ class _EventDetailPageState extends State<EventDetailPage> {
                           DataColumn(
                             label: SizedBox(
                               width: 100,
-                              child: const Text(
+                              child: Text(
                                 'Certificate',
                                 style: TextStyle(
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w700,
                                   color: Color(0xFF2C3E50),
                                   fontSize: 14,
                                 ),
@@ -4874,11 +5559,33 @@ class _EventDetailPageState extends State<EventDetailPage> {
               ),
             ),
           ),
-          // Footer
+          // Footer: desktop original, mobile flexible
           Container(
+            width: double.infinity,
             height: 60,
             color: const Color(0xFF424242),
-            child: Row(
+            child: isMobile(context) ? Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  const Icon(Icons.info_outline, color: Colors.white, size: 18),
+                  _footerLink(context, 'Home', () { Navigator.pushNamedAndRemoveUntil(context, '/', (r) => false); }),
+                  _sep(), _footerLink(context, 'Pricing', () { Navigator.pushNamed(context, '/pricing'); }),
+                  _sep(), _footerLink(context, 'Features', () { Navigator.pushNamed(context, '/features'); }),
+                  _sep(), _footerLink(context, 'T&C', () { Navigator.pushNamed(context, '/terms'); }),
+                  _sep(), _footerLink(context, 'Contact', () { Navigator.pushNamed(context, '/contact'); }),
+                  _sep(), _footerLink(context, 'FAQ', () { Navigator.pushNamed(context, '/faq'); }),
+                  const SizedBox(width: 10),
+                  _footerLink(context, 'Request Quote (via Whatsapp)', () { final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0'; openUrl(whatsappUrl); }),
+                  const SizedBox(width: 10), const Icon(Icons.email, color: Colors.white, size: 18), const SizedBox(width: 6), const Text('runmlgrun@gmail.com', style: TextStyle(color: Colors.white, fontSize: 12)),
+                ],
+              ),
+            ) : Row(
               children: [
                 const SizedBox(width: 20),
                 const Icon(Icons.info_outline, color: Colors.white, size: 20),
@@ -4889,57 +5596,57 @@ class _EventDetailPageState extends State<EventDetailPage> {
                       onTap: () {
                         Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
                       },
-                      child: const Text(
+                      child: Text(
                         'Home',
                         style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                       ),
                     ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
                     GestureDetector(
                       onTap: () {
                         Navigator.pushNamed(context, '/pricing');
                       },
-                      child: const Text(
+                      child: Text(
                         'Pricing',
                         style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                       ),
                     ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
                     GestureDetector(
                       onTap: () {
                         Navigator.pushNamed(context, '/features');
                       },
-                      child: const Text(
+                      child: Text(
                         'Features',
                         style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                       ),
                     ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
                     GestureDetector(
                       onTap: () {
                         Navigator.pushNamed(context, '/terms');
                       },
-                      child: const Text(
+                      child: Text(
                         'T&C',
                         style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                       ),
                     ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
                     GestureDetector(
                       onTap: () {
                         Navigator.pushNamed(context, '/contact');
                       },
-                      child: const Text(
+                      child: Text(
                         'Contact',
                         style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                       ),
                     ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
                     GestureDetector(
                       onTap: () {
                         Navigator.pushNamed(context, '/faq');
                       },
-                      child: const Text(
+                      child: Text(
                         'FAQ',
                         style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                       ),
@@ -4952,7 +5659,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
                     final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
                     openUrl(whatsappUrl);
                   },
-                  child: const Text(
+                  child: Text(
                     'Request Quote (via Whatsapp)',
                     style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                   ),
@@ -4960,7 +5667,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
                 const Spacer(),
                 const Icon(Icons.email, color: Colors.white, size: 20),
                 const SizedBox(width: 10),
-                const Text(
+                Text(
                   'runmlgrun@gmail.com',
                   style: TextStyle(color: Colors.white, fontSize: 14),
                 ),
@@ -4973,11 +5680,14 @@ class _EventDetailPageState extends State<EventDetailPage> {
     );
   }
 
-  Widget _buildNavItem(String text, bool isActive, {VoidCallback? onTap}) {
+  Widget _buildNavItem(BuildContext context, String text, bool isActive, {VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
+        padding: EdgeInsets.symmetric(
+          horizontal: isMobile(context) ? 12 : 20,
+          vertical: isMobile(context) ? 15 : 25,
+        ),
         decoration: BoxDecoration(
           color: isActive ? Colors.white.withOpacity(0.15) : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
@@ -4987,7 +5697,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
           style: TextStyle(
             color: Colors.white,
             fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-            fontSize: 15,
+            fontSize: isMobile(context) ? 13 : 15,
             letterSpacing: 0.5,
           ),
         ),
@@ -5106,9 +5816,9 @@ class ResultsDataSource extends DataTableSource {
                       }
                     },
                     icon: const Icon(Icons.download),
-                    label: const Text('Download'),
+                    label: Text('Download'),
                   )
-                : const Text(''),
+                : Text(''),
           ),
         ),
 
@@ -5204,7 +5914,7 @@ class TermsPage extends StatelessWidget {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Search'),
+          title: Text('Search'),
           content: TextField(
             controller: searchController,
             decoration: const InputDecoration(
@@ -5214,14 +5924,14 @@ class TermsPage extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Cancel'),
+              child: Text('Cancel'),
             ),
             ElevatedButton(
               onPressed: () {
                 Navigator.of(dialogContext).pop();
                 Navigator.pushNamed(context, '/results');
               },
-              child: const Text('Search'),
+              child: Text('Search'),
             ),
           ],
         );
@@ -5279,34 +5989,60 @@ class TermsPage extends StatelessWidget {
                 ),
                 const Spacer(),
                 // Navigation
-                Row(
-                  children: [
-                    _buildNavItem('Home', false, onTap: () {
-                      Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
-                    }),
-                    _buildNavItem('Race Results', false, onTap: () {
-                      Navigator.pushNamed(context, '/results');
-                    }),
-                    _buildNavItem('Pricing', false, onTap: () {
-                      Navigator.pushNamed(context, '/pricing');
-                    }),
-                    _buildNavItem('Features', false, onTap: () {
-                      Navigator.pushNamed(context, '/features');
-                    }),
-                    _buildNavItem('Contact', false, onTap: () {
-                      Navigator.pushNamed(context, '/contact');
-                    }),
-                    _buildNavItem('FAQ', false, onTap: () {
-                      Navigator.pushNamed(context, '/faq');
-                    }),
-                    const SizedBox(width: 20),
-                    GestureDetector(
-                      onTap: () => navigateToSearchPage(context),
-                      child: const Icon(Icons.search, color: Colors.white, size: 20),
+                isMobile(context)
+                  ? Row(
+                      children: [
+                        _buildMobileMenuButton(context),
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          onTap: () => navigateToSearchPage(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Icon(Icons.search, color: Colors.white, size: 18),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        _buildNavItem(context, 'Home', false, onTap: () {
+                          Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+                        }),
+                        _buildNavItem(context, 'Race Results', false, onTap: () {
+                          Navigator.pushNamed(context, '/results');
+                        }),
+                        _buildNavItem(context, 'Pricing', false, onTap: () {
+                          Navigator.pushNamed(context, '/pricing');
+                        }),
+                        _buildNavItem(context, 'Features', false, onTap: () {
+                          Navigator.pushNamed(context, '/features');
+                        }),
+                        _buildNavItem(context, 'Contact', false, onTap: () {
+                          Navigator.pushNamed(context, '/contact');
+                        }),
+                        _buildNavItem(context, 'FAQ', false, onTap: () {
+                          Navigator.pushNamed(context, '/faq');
+                        }),
+                        const SizedBox(width: 20),
+                        GestureDetector(
+                          onTap: () => navigateToSearchPage(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.search, color: Colors.white, size: 20),
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                      ],
                     ),
-                    const SizedBox(width: 20),
-                  ],
-                ),
               ],
             ),
           ),
@@ -5345,18 +6081,18 @@ class TermsPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Title
-                    const Text(
+                    Text(
                       'LARI TERUS – Terms and Conditions of Service',
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.w800,
                         color: Color(0xFF2C3E50),
-                        letterSpacing: 1,
+                        letterSpacing: 0.4,
                       ),
                     ),
                     const SizedBox(height: 20),
                     // Introduction
-                    const Text(
+                    Text(
                       'These Terms and Conditions ("Terms") constitute a legally binding agreement between the client ("Client") and LARI TERUS ("Company") with respect to the provision of race timing system services. By engaging our services, the Client agrees to be bound by these Terms.',
                       style: TextStyle(
                         fontSize: 16,
@@ -5476,7 +6212,7 @@ class TermsPage extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Contact Information',
                             style: TextStyle(
                               fontSize: 20,
@@ -5485,7 +6221,7 @@ class TermsPage extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 15),
-                          const Text(
+                          Text(
                             'For questions regarding these Terms and Conditions, please contact us:',
                             style: TextStyle(
                               fontSize: 16,
@@ -5494,7 +6230,7 @@ class TermsPage extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 10),
-                          const Text(
+                          Text(
                             'Email: runmlgrun@gmail.com',
                             style: TextStyle(
                               fontSize: 16,
@@ -5503,7 +6239,7 @@ class TermsPage extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 5),
-                          const Text(
+                          Text(
                             'Phone: +62-852-0411-5000',
                             style: TextStyle(
                               fontSize: 16,
@@ -5519,11 +6255,33 @@ class TermsPage extends StatelessWidget {
               ),
             ),
           ),
-          // Footer
+          // Footer: desktop original, mobile flexible
           Container(
+            width: double.infinity,
             height: 60,
             color: const Color(0xFF424242),
-            child: Row(
+            child: isMobile(context) ? Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  const Icon(Icons.info_outline, color: Colors.white, size: 18),
+                  _footerLink(context, 'Home', () { Navigator.pushNamedAndRemoveUntil(context, '/', (r) => false); }),
+                  _sep(), _footerLink(context, 'Pricing', () { Navigator.pushNamed(context, '/pricing'); }),
+                  _sep(), _footerLink(context, 'Features', () { Navigator.pushNamed(context, '/features'); }),
+                  _sep(), _footerLink(context, 'T&C', () { Navigator.pushNamed(context, '/terms'); }),
+                  _sep(), _footerLink(context, 'Contact', () { Navigator.pushNamed(context, '/contact'); }),
+                  _sep(), _footerLink(context, 'FAQ', () { Navigator.pushNamed(context, '/faq'); }),
+                  const SizedBox(width: 10),
+                  _footerLink(context, 'Request Quote (via Whatsapp)', () { final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0'; openUrl(whatsappUrl); }),
+                  const SizedBox(width: 10), const Icon(Icons.email, color: Colors.white, size: 18), const SizedBox(width: 6), const Text('runmlgrun@gmail.com', style: TextStyle(color: Colors.white, fontSize: 12)),
+                ],
+              ),
+            ) : Row(
               children: [
                 const SizedBox(width: 20),
                 const Icon(Icons.info_outline, color: Colors.white, size: 20),
@@ -5534,57 +6292,57 @@ class TermsPage extends StatelessWidget {
                       onTap: () {
                         Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
                       },
-                      child: const Text(
+                      child: Text(
                         'Home',
                         style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                       ),
                     ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
                     GestureDetector(
                       onTap: () {
                         Navigator.pushNamed(context, '/pricing');
                       },
-                      child: const Text(
+                      child: Text(
                         'Pricing',
                         style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                       ),
                     ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
                     GestureDetector(
                       onTap: () {
                         Navigator.pushNamed(context, '/features');
                       },
-                      child: const Text(
+                      child: Text(
                         'Features',
                         style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                       ),
                     ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
                     GestureDetector(
                       onTap: () {
                         Navigator.pushNamed(context, '/terms');
                       },
-                      child: const Text(
+                      child: Text(
                         'T&C',
                         style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                       ),
                     ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
                     GestureDetector(
                       onTap: () {
                         Navigator.pushNamed(context, '/contact');
                       },
-                      child: const Text(
+                      child: Text(
                         'Contact',
                         style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                       ),
                     ),
-                    const Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    Text(' | ', style: TextStyle(color: Colors.white, fontSize: 14)),
                     GestureDetector(
                       onTap: () {
                         Navigator.pushNamed(context, '/faq');
                       },
-                      child: const Text(
+                      child: Text(
                         'FAQ',
                         style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                       ),
@@ -5597,7 +6355,7 @@ class TermsPage extends StatelessWidget {
                     final whatsappUrl = 'https://api.whatsapp.com/send/?phone=6285708700863&text=Halo%2C%0A%0ASaya+tertarik+untuk+mengetahui+lebih+lanjut+tentang+solusi+pencatatan+waktu+balap+berbasis+RFID+yang+Anda+tawarkan.+Bisakah+Anda+memberikan+informasi+lebih+lanjut+mengenai+layanan+dan+paket+harga+yang+tersedia%3F&type=phone_number&app_absent=0';
                     openUrl(whatsappUrl);
                   },
-                  child: const Text(
+                  child: Text(
                     'Request Quote (via Whatsapp)',
                     style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline, decorationThickness: 1.5),
                   ),
@@ -5605,7 +6363,7 @@ class TermsPage extends StatelessWidget {
                 const Spacer(),
                 const Icon(Icons.email, color: Colors.white, size: 20),
                 const SizedBox(width: 10),
-                const Text(
+                Text(
                   'runmlgrun@gmail.com',
                   style: TextStyle(color: Colors.white, fontSize: 14),
                 ),
@@ -5667,11 +6425,14 @@ class TermsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildNavItem(String text, bool isActive, {VoidCallback? onTap}) {
+  Widget _buildNavItem(BuildContext context, String text, bool isActive, {VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+        padding: EdgeInsets.symmetric(
+          horizontal: isMobile(context) ? 10 : 15,
+          vertical: isMobile(context) ? 6 : 8,
+        ),
         margin: const EdgeInsets.symmetric(horizontal: 5),
         decoration: BoxDecoration(
           color: isActive ? Colors.white.withOpacity(0.2) : Colors.transparent,
@@ -5681,7 +6442,7 @@ class TermsPage extends StatelessWidget {
           text,
           style: TextStyle(
             color: Colors.white,
-            fontSize: 14,
+            fontSize: isMobile(context) ? 12 : 14,
             fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
           ),
         ),
